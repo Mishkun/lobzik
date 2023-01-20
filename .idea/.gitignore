@@ -1,0 +1,11 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+codeStyles
+compiler.xml
+jarRepositories.xml
+kotlinc.xml
+misc.xml
+vcs.xml
+
+/inspectionProfiles
