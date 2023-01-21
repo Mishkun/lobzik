@@ -1,4 +1,4 @@
-package xyz.mishkun.lobzik.moduleinfo
+package xyz.mishkun.lobzik.dependencies.perproject
 
 import com.github.doyaaaaaken.kotlincsv.dsl.csvWriter
 import org.gradle.api.DefaultTask
@@ -14,9 +14,7 @@ import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
-private const val ASM_VERSION = Opcodes.ASM9
-
-abstract class LobzikListProjectClassesTask : DefaultTask() {
+abstract class LobzikProjectDependencyGraphTask : DefaultTask() {
 
     private val logger = getLogger()
 
@@ -88,11 +86,4 @@ abstract class LobzikListProjectClassesTask : DefaultTask() {
     }
 
     private data class ClassDependency(val name: String, val dependsOn: String, val times: Int)
-
-    private fun ZipFile.asSequenceOfClassFiles(): Sequence<ZipEntry> {
-        return entries().asSequence().filter {
-            it.name.endsWith(".class") && it.name != "module-info.class"
-        }
-    }
-
 }

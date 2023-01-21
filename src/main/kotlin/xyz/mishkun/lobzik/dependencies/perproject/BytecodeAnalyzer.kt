@@ -1,4 +1,4 @@
-package xyz.mishkun.lobzik.moduleinfo
+package xyz.mishkun.lobzik.dependencies.perproject
 
 import org.gradle.api.logging.Logger
 import org.objectweb.asm.*
