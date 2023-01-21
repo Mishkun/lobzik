@@ -40,9 +40,9 @@ public class SmaliAnalyzer {
 		this.classFilter = classFilter;
 	}
 
-	private Map<String, Set<String>> dependencies = new HashMap<>();
+	private Map<String, Map<String, Integer>> dependencies = new HashMap<>();
 
-	public Map<String, Set<String>> getDependencies() {
+	public Map<String, Map<String, Integer>> getDependencies() {
 		if (filters == null || filters.isProcessingInner()) {
 			return dependencies;
 		}
@@ -97,7 +97,7 @@ public class SmaliAnalyzer {
 		try (BufferedReader br = new BufferedReader(new FileReader(file))) {
 
 			String fileName = file.getName().substring(0, file.getName().lastIndexOf("."));
-			
+
 			if (isClassAnonymous(fileName)) {
 				fileName = getAnonymousNearestOuter(fileName);
 			}
@@ -106,21 +106,25 @@ public class SmaliAnalyzer {
 				return;
 			}
 
+			String dir = projectPath;
+			String filepath = file.getPath();
+			int direct = filepath.length() - ".smali".length();
+			String thisClassName = filepath.substring(dir.length() + 1, direct).replace("/", ".");
 			Set<String> classNames = new HashSet<>();
-			Set<String> dependencyNames = new HashSet<>();
+			HashMap<String, Integer> dependencyNames = new HashMap<>();
 
-			for (String line; (line = br.readLine()) != null;) {
+			for (String line; (line = br.readLine()) != null; ) {
 				try {
 					classNames.clear();
-	
+
 					parseAndAddClassNames(classNames, line);
-	
+
 					// filtering
 					for (String fullClassName : classNames) {
 						if (fullClassName != null && isPathFilterOk(fullClassName)) {
 							String simpleClassName = getClassSimpleName(fullClassName);
-							if (isClassFilterOk(simpleClassName) && isClassOk(simpleClassName, fileName)) {
-								dependencyNames.add(simpleClassName);
+							if (isClassFilterOk(simpleClassName) && isClassOk(simpleClassName, fileName) && !thisClassName.equals(simpleClassName)) {
+								dependencyNames.merge(simpleClassName, 1, Integer::sum);
 							}
 						}
 					}
@@ -131,14 +135,11 @@ public class SmaliAnalyzer {
 
 			// inner/nested class always depends on the outer class
 			if (isClassInner(fileName)) {
-				dependencyNames.add(getOuterClass(fileName));
+				dependencyNames.merge(getOuterClass(fileName), 1, Integer::sum);
 			}
 
 			if (!dependencyNames.isEmpty()) {
-				String dir = projectPath;
-				String filepath = file.getPath();
-				int direct = filepath.length() - ".smali".length();
-				addDependencies(filepath.substring(dir.length()+1, direct).replace("/", "."), dependencyNames);
+				addDependencies(thisClassName, dependencyNames);
 			}
 		} catch (FileNotFoundException e) {
 			System.err.println("Cannot found " + file.getAbsolutePath());
@@ -182,33 +183,35 @@ public class SmaliAnalyzer {
 					index = line.indexOf("L", colonIndex);
 				}
 			} else {
-				index = line.indexOf("L", index+1);
+				index = line.indexOf("L", index + 1);
 				continue;
 			}
 
 			classNames.add(className);
 		}
-	}	
+	}
 
-	private void addDependencies(String className, Set<String> dependenciesList) {
-		Set<String> depList = dependencies.get(className);
+	private void addDependencies(String className, HashMap<String, Integer> dependenciesList) {
+		Map<String, Integer> depList = dependencies.get(className);
 		if (depList == null) {
 			// add this class and its dependencies
 			dependencies.put(className, dependenciesList);
 		} else {
 			// if this class is already added - update its dependencies
-			depList.addAll(dependenciesList);
+			for (String dep : dependenciesList.keySet()) {
+				depList.merge(dep, dependenciesList.get(dep), Integer::sum);
+			}
 		}
 	}
 
-	private Map<String,Set<String>> getFilteredDependencies() {
-		Map<String, Set<String>> filteredDependencies = new HashMap<>();
+	private Map<String, Map<String, Integer>> getFilteredDependencies() {
+		Map<String, Map<String, Integer>> filteredDependencies = new HashMap<>();
 		for (String key : dependencies.keySet()) {
 			if (!key.contains("$")) {
-				Set<String> dependencySet = new HashSet<>();
-				for (String dependency : dependencies.get(key)) {
+				HashMap<String, Integer> dependencySet = new HashMap<>();
+				for (String dependency : dependencies.get(key).keySet()) {
 					if (!dependency.contains("$")) {
-						dependencySet.add(dependency);
+						dependencySet.put(dependency, dependencies.get(key).get(dependency));
 					}
 				}
 				if (dependencySet.size() > 0) {
