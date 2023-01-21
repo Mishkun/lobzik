@@ -18,11 +18,14 @@ gradlePlugin {
     }
 }
 
+val VERSION_ASM = "9.4"
 dependencies {
     implementation(gradleApi())
     implementation(gradleKotlinDsl())
     implementation("com.android.tools.build:gradle-api:7.3.1")
     implementation(project(":apk-dependency-graph-builder"))
+    implementation("org.ow2.asm:asm:$VERSION_ASM")
+    implementation("org.ow2.asm:asm-tree:$VERSION_ASM")
     testImplementation(kotlin("test"))
 }
 
