@@ -1,5 +1,18 @@
 package com.alex_zaitsev.adg;
 
+import static com.alex_zaitsev.adg.util.CodeUtils.getAnonymousNearestOuter;
+import static com.alex_zaitsev.adg.util.CodeUtils.getClassSimpleName;
+import static com.alex_zaitsev.adg.util.CodeUtils.getEndGenericIndex;
+import static com.alex_zaitsev.adg.util.CodeUtils.getOuterClass;
+import static com.alex_zaitsev.adg.util.CodeUtils.isClassAnonymous;
+import static com.alex_zaitsev.adg.util.CodeUtils.isClassGenerated;
+import static com.alex_zaitsev.adg.util.CodeUtils.isClassInner;
+import static com.alex_zaitsev.adg.util.CodeUtils.isInstantRunEnabled;
+import static com.alex_zaitsev.adg.util.CodeUtils.isSmaliFile;
+
+import com.alex_zaitsev.adg.filter.Filter;
+import com.alex_zaitsev.adg.io.Filters;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -10,32 +23,18 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.alex_zaitsev.adg.io.Arguments;
-import com.alex_zaitsev.adg.io.Filters;
-import com.alex_zaitsev.adg.filter.Filter;
-
-import static com.alex_zaitsev.adg.util.CodeUtils.isClassGenerated;
-import static com.alex_zaitsev.adg.util.CodeUtils.isClassInner;
-import static com.alex_zaitsev.adg.util.CodeUtils.getOuterClass;
-import static com.alex_zaitsev.adg.util.CodeUtils.isClassAnonymous;
-import static com.alex_zaitsev.adg.util.CodeUtils.getAnonymousNearestOuter;
-import static com.alex_zaitsev.adg.util.CodeUtils.getEndGenericIndex;
-import static com.alex_zaitsev.adg.util.CodeUtils.getClassSimpleName;
-import static com.alex_zaitsev.adg.util.CodeUtils.isInstantRunEnabled;
-import static com.alex_zaitsev.adg.util.CodeUtils.isSmaliFile;
-
 public class SmaliAnalyzer {
 
-	private Arguments arguments;
+	private String projectPath;
 	private Filters filters;
 	private Filter<String> pathFilter;
 	private Filter<String> classFilter;
 
-	public SmaliAnalyzer(Arguments arguments, 
+	public SmaliAnalyzer(String projectPath,
 						 Filters filters,
 						 Filter<String> pathFilter,
 						 Filter<String> classFilter) {
-		this.arguments = arguments;
+		this.projectPath = projectPath;
 		this.filters = filters;
 		this.pathFilter = pathFilter;
 		this.classFilter = classFilter;
@@ -52,12 +51,12 @@ public class SmaliAnalyzer {
 
 	public boolean run() {
 		System.out.println("Analyzing dependencies...");
-		
-		File projectDir = new File(arguments.getProjectPath());
+
+		File projectDir = new File(projectPath);
 		if (projectDir.exists()) {
-			if (isInstantRunEnabled(arguments.getProjectPath())) {
+			if (isInstantRunEnabled(projectPath)) {
 				System.err.println("Enabled Instant Run feature detected. " +
-					"We cannot decompile it. Please, disable Instant Run and rebuild your app.");
+						"We cannot decompile it. Please, disable Instant Run and rebuild your app.");
 			} else {
 				traverseSmaliCodeDir(projectDir);
 				return true;
@@ -136,7 +135,7 @@ public class SmaliAnalyzer {
 			}
 
 			if (!dependencyNames.isEmpty()) {
-				String dir = arguments.getProjectPath();
+				String dir = projectPath;
 				String filepath = file.getPath();
 				int direct = filepath.length() - ".smali".length();
 				addDependencies(filepath.substring(dir.length()+1, direct).replace("/", "."), dependencyNames);

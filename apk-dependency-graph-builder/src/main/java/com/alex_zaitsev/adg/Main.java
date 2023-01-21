@@ -1,18 +1,19 @@
 package com.alex_zaitsev.adg;
 
 import com.alex_zaitsev.adg.decode.ApkSmaliDecoderController;
+import com.alex_zaitsev.adg.filter.Filter;
 import com.alex_zaitsev.adg.io.ArgumentReader;
 import com.alex_zaitsev.adg.io.Arguments;
-import com.alex_zaitsev.adg.io.FiltersReader;
 import com.alex_zaitsev.adg.io.Filters;
+import com.alex_zaitsev.adg.io.FiltersReader;
 import com.alex_zaitsev.adg.io.Writer;
 import com.alex_zaitsev.adg.util.FileUtils;
-import com.alex_zaitsev.adg.filter.Filter;
 
 import java.io.File;
 
 public class Main {
 
+    private static final int DEFAULT_ANDROID_VERSION = 28;
     public static void main(String[] args) {
         // parse arguments
         Arguments arguments = new ArgumentReader(args).read();
@@ -37,14 +38,17 @@ public class Main {
 
         // Decode the APK file for smali code in the output directory.
         ApkSmaliDecoderController.decode(
-            arguments.getApkFilePath(), arguments.getProjectPath());
+                arguments.getApkFilePath(),
+                arguments.getProjectPath(),
+                DEFAULT_ANDROID_VERSION
+        );
 
         // Analyze the decoded files and create the result file.
         FilterProvider filterProvider = new FilterProvider(filters);
         Filter<String> pathFilter = filterProvider.makePathFilter();
         Filter<String> classFilter = filterProvider.makeClassFilter();
-        SmaliAnalyzer analyzer = new SmaliAnalyzer(arguments, filters, 
-                                                   pathFilter, classFilter);
+        SmaliAnalyzer analyzer = new SmaliAnalyzer(arguments.getProjectPath(), filters,
+                pathFilter, classFilter);
 
         if (analyzer.run()) {
             File resultFile = new File(arguments.getResultPath());
