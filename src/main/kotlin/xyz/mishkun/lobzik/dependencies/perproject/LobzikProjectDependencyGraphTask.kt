@@ -7,12 +7,13 @@ import org.gradle.api.file.FileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
-import org.gradle.api.tasks.*
+import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.TaskAction
 import org.objectweb.asm.ClassReader
-import org.objectweb.asm.Opcodes
 import java.io.File
-import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
 
 abstract class LobzikProjectDependencyGraphTask : DefaultTask() {
 
@@ -43,12 +44,19 @@ abstract class LobzikProjectDependencyGraphTask : DefaultTask() {
             .files
 
         val parsedDeps = parseClassDependencies(files)
+            .flattenClasses()
+
         csvWriter().open(classesDependenciesOutput.get().asFile) {
             writeRow("Source", "Target", "Weight")
             for (dep in parsedDeps) {
                 writeRow(dep.name, dep.dependsOn, dep.times)
             }
         }
+    }
+
+    private fun List<ClassDependency>.flattenClasses(): List<ClassDependency> {
+        return groupBy { it.name to it.dependsOn }
+            .map { (key, value) -> ClassDependency(key.first, key.second, value.sumOf { it.times }) }
     }
 
     private fun parseClassDependencies(files: Set<File>): List<ClassDependency> {
@@ -75,13 +83,18 @@ abstract class LobzikProjectDependencyGraphTask : DefaultTask() {
         }
     }
 
-    private fun String.isOk(prefix: String, filter: List<Regex>) = startsWith(prefix) && filter.none { it.matches(this) }
+    private fun String.isOk(prefix: String, filter: List<Regex>) =
+        startsWith(prefix) && filter.none { it.matches(getClassSimpleName(this)) }
+
+    private fun getClassSimpleName(fullClassName: String): String =
+        fullClassName.substringBefore('<').substringAfterLast('.')
 
     private fun canonicalize(className: String): String = className.replace('/', '.')
+        .substringBefore('$')
 
     private fun FileCollection.filterToClassFiles(): FileCollection {
         return filter {
-            it.isFile && it.name.endsWith(".class") &&  it.name != "module-info.class"
+            it.isFile && it.name.endsWith(".class") && it.name != "module-info.class"
         }
     }
 

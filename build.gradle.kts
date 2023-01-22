@@ -16,6 +16,10 @@ gradlePlugin {
         id = "xyz.mishkun.lobzik.projectdeps"
         implementationClass = "xyz.mishkun.lobzik.dependencies.perproject.LobzikProjectDependencyGraphPlugin"
     }
+    plugins.create("lobzik-toplevel") {
+        id = "xyz.mishkun.lobzik"
+        implementationClass = "xyz.mishkun.lobzik.LobzikPlugin"
+    }
 }
 
 
