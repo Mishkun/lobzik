@@ -38,8 +38,8 @@ class LobzikProjectDependencyGraphPlugin : Plugin<Project> {
                         target.tasks.named<JavaCompile>("compile${variant.name.capitalized()}JavaWithJavac")
                             .map { it.outputs.files.asFileTree }
                     )
-                    classesDependenciesOutput.set(project.layout.buildDirectory.file("reports/${variant.name}/lobzik/${target.name}_edges.csv"))
-                    classesNodeInfoOutput.set(project.layout.buildDirectory.file("reports/${variant.name}/lobzik/${target.name}_nodes.csv"))
+                    classesDependenciesOutput.set(project.layout.buildDirectory.file("reports/${variant.name}/lobzik/edges.csv"))
+                    classesNodeInfoOutput.set(project.layout.buildDirectory.file("reports/${variant.name}/lobzik/nodes.csv"))
                 }
                 target.artifacts {
                     it.add(graphConfiguration.name, task.flatMap { it.classesDependenciesOutput })
@@ -59,8 +59,8 @@ class LobzikProjectDependencyGraphPlugin : Plugin<Project> {
                     target.tasks.named<JavaCompile>("compileJava")
                         .map { it.outputs.files.asFileTree }
                 )
-                classesDependenciesOutput.set(project.layout.buildDirectory.file("reports/lobzik/${target.name}_edges.csv"))
-                classesNodeInfoOutput.set(project.layout.buildDirectory.file("reports/lobzik/${target.name}_nodes.csv"))
+                classesDependenciesOutput.set(project.layout.buildDirectory.file("reports/lobzik/edges.csv"))
+                classesNodeInfoOutput.set(project.layout.buildDirectory.file("reports/lobzik/nodes.csv"))
             }
             target.artifacts {
                 it.add(graphConfiguration.name, task.flatMap { it.classesDependenciesOutput })
