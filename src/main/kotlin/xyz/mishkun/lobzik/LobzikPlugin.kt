@@ -14,14 +14,17 @@ class LobzikPlugin: Plugin<Project> {
     override fun apply(target: Project) {
         val extension = target.extensions.create("lobzik", LobzikExtension::class.java)
         val configuration = target.configurations.create("projectDependencyGraph")
+        val nodesConfiguration = target.configurations.create("projectDependencyGraphNodes")
         val task = target.tasks.register<LobzikAggregateDependenciesTask>("aggregateProjectDependencyGraph") {
             inputFiles.from(configuration)
+            nodeFiles.from(nodesConfiguration)
             csvEdgesOutputFile.set(target.layout.buildDirectory.file("reports/lobzik/dependency_edges.csv"))
             csvNodesOutputFile.set(target.layout.buildDirectory.file("reports/lobzik/dependency_nodes.csv"))
         }
         target.subprojects {  subproject ->
             target.dependencies {
                 configuration(project(subproject.name, "projectDependencyGraph"))
+                nodesConfiguration(project(subproject.name, "projectDependencyGraphNodes"))
             }
             subproject.pluginManager.withPlugin(ANDROID_APP_PLUGIN) {
                 applySubplugin(target, subproject)

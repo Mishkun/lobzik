@@ -28,6 +28,7 @@ internal class ClassAnalyzer(private val logger: Logger) : ClassVisitor(ASM_VERS
 
     var source: String? = null
     lateinit var className: String
+    var isInterface: Boolean = false
     val classes = mutableMapOf<String, Int>()
 
     private val methodAnalyzer = MethodAnalyzer(logger, classes)
@@ -60,6 +61,7 @@ internal class ClassAnalyzer(private val logger: Logger) : ClassVisitor(ASM_VERS
         interfaces: Array<out String>?
     ) {
         log("ClassAnalyzer#visit: $name extends $superName")
+        isInterface = access.and(Opcodes.ACC_INTERFACE) != 0
         className = name
         addClass("L$superName;")
         interfaces?.forEach { i ->
