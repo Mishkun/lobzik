@@ -9,11 +9,12 @@ import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
 import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
+import xyz.mishkun.lobzik.LobzikExtension
 
 class LobzikProjectDependencyGraphPlugin : Plugin<Project> {
     override fun apply(target: Project) {
-        val rootExtension = target.rootProject.extensions.getByType<LobzikExtension>()
-        val extension = target.extensions.create("lobzik", LobzikExtension::class.java)
+        val rootExtension = target.rootProject.extensions.getByType<LobzikProjectExtension>()
+        val extension = target.extensions.create("lobzik", LobzikProjectExtension::class.java)
         extension.variantName.convention(rootExtension.variantName)
         extension.packagePrefix.convention(rootExtension.packagePrefix)
         extension.ignoredClasses.convention(rootExtension.ignoredClasses)
@@ -32,11 +33,9 @@ class LobzikProjectDependencyGraphPlugin : Plugin<Project> {
                     ignoredClasses.set(extension.ignoredClasses)
                     kotlinClasses.from(
                         target.tasks.named("compile${variant.name.capitalized()}Kotlin", KotlinCompile::class.java)
-                            .map { it.outputs.files.asFileTree }
                     )
                     javaClasses.from(
                         target.tasks.named<JavaCompile>("compile${variant.name.capitalized()}JavaWithJavac")
-                            .map { it.outputs.files.asFileTree }
                     )
                     classesDependenciesOutput.set(project.layout.buildDirectory.file("reports/${variant.name}/lobzik/edges.csv"))
                     classesNodeInfoOutput.set(project.layout.buildDirectory.file("reports/${variant.name}/lobzik/nodes.csv"))
@@ -53,11 +52,9 @@ class LobzikProjectDependencyGraphPlugin : Plugin<Project> {
                 projectName.set(target.name)
                 kotlinClasses.from(
                     target.tasks.named("compileKotlin", KotlinCompile::class.java)
-                        .map { it.outputs.files.asFileTree }
                 )
                 javaClasses.from(
                     target.tasks.named<JavaCompile>("compileJava")
-                        .map { it.outputs.files.asFileTree }
                 )
                 classesDependenciesOutput.set(project.layout.buildDirectory.file("reports/lobzik/edges.csv"))
                 classesNodeInfoOutput.set(project.layout.buildDirectory.file("reports/lobzik/nodes.csv"))

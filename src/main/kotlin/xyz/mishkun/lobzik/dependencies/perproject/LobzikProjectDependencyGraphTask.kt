@@ -52,9 +52,12 @@ abstract class LobzikProjectDependencyGraphTask : DefaultTask() {
         val parsedDeps = parseClassDependencies(files)
             .flattenClasses()
 
+        val edges = parsedDeps.flatMap { info ->
+            info.dependencies.map { ClassDependency(info.name, it.key, it.value) }
+        }.filter { it.name != it.dependsOn }
         csvWriter().open(classesDependenciesOutput.get().asFile) {
             writeRow("Source", "Target", "Weight")
-            for (dep in parsedDeps.flatMap { info -> info.dependencies.map { ClassDependency(info.name, it.key, it.value) } }) {
+            for (dep in edges) {
                 writeRow(dep.name, dep.dependsOn, dep.times)
             }
         }

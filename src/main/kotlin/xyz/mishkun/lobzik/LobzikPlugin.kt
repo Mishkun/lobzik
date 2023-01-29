@@ -6,8 +6,8 @@ import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.project
 import org.gradle.kotlin.dsl.register
+import xyz.mishkun.lobzik.analysis.LobzikAnalyzeDependencyGraphTask
 import xyz.mishkun.lobzik.dependencies.aggregate.LobzikAggregateDependenciesTask
-import xyz.mishkun.lobzik.dependencies.perproject.LobzikExtension
 import xyz.mishkun.lobzik.dependencies.perproject.LobzikProjectDependencyGraphPlugin
 
 class LobzikPlugin: Plugin<Project> {
@@ -15,11 +15,20 @@ class LobzikPlugin: Plugin<Project> {
         val extension = target.extensions.create("lobzik", LobzikExtension::class.java)
         val configuration = target.configurations.create("projectDependencyGraph")
         val nodesConfiguration = target.configurations.create("projectDependencyGraphNodes")
-        val task = target.tasks.register<LobzikAggregateDependenciesTask>("aggregateProjectDependencyGraph") {
+        val aggregateTask = target.tasks.register<LobzikAggregateDependenciesTask>("aggregateProjectDependencyGraph") {
             inputFiles.from(configuration)
             nodeFiles.from(nodesConfiguration)
-            csvEdgesOutputFile.set(target.layout.buildDirectory.file("reports/lobzik/dependency_edges.csv"))
-            csvNodesOutputFile.set(target.layout.buildDirectory.file("reports/lobzik/dependency_nodes.csv"))
+            csvEdgesOutputFile.set(target.layout.buildDirectory.file("reports/lobzik/dependencies/edges.csv"))
+            csvNodesOutputFile.set(target.layout.buildDirectory.file("reports/lobzik/dependencies/nodes.csv"))
+        }
+        val analyzeTask = target.tasks.register<LobzikAnalyzeDependencyGraphTask>("analyzeProjectDependencyGraph") {
+//            nodesFile.set(aggregateTask.flatMap { it.csvNodesOutputFile })
+//            edgesFile.set(aggregateTask.flatMap { it.csvEdgesOutputFile })
+            monolithModule.set(extension.monolithModule)
+            featureModulesRegex.set(extension.featureModulesRegex)
+            nodesFile.set(target.layout.buildDirectory.file("reports/lobzik/dependencies/edges.csv"))
+            edgesFile.set(target.layout.buildDirectory.file("reports/lobzik/dependencies/nodes.csv"))
+            outputDir.set(target.layout.buildDirectory.dir("reports/lobzik/analysis"))
         }
         target.subprojects {  subproject ->
             target.dependencies {

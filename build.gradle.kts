@@ -27,6 +27,7 @@ val VERSION_ASM = "9.4"
 dependencies {
     implementation(gradleApi())
     implementation(gradleKotlinDsl())
+    implementation(project(":graph-processing"))
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.6.10")
     implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.7.0")
     implementation("com.android.tools.build:gradle-api:7.3.1")
