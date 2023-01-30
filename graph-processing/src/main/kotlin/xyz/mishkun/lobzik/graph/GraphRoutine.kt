@@ -160,7 +160,14 @@ class GraphRoutine(
         appearanceController.transform(func)
 
         val modules = graphModel.directedGraphVisible.nodes.groupBy { it.getAttribute(Modularity.MODULARITY_CLASS) as Int }
-        val moduleLabels = modules.mapValues { (_, nodes) -> nodes.maxBy { it.getAttribute(Degree.DEGREE) as Int }.label }
+        val labelFrequency = graphModel.directedGraphVisible.nodes.flatMap { it.label.split("(?<=.)(?=\\p{Upper})".toRegex()) }
+            .fold(mutableMapOf<String, Int>()) { acc, el -> acc.merge(el, 1, Int::plus); acc }
+        val moduleLabels = modules.mapValues { (_, nodes) ->
+            val moduleLabelFrequency = nodes.flatMap { it.label.split("(?<=.)(?=\\p{Upper})".toRegex()) }
+                .fold(mutableMapOf<String, Int>()) { acc, el -> acc.merge(el, 1, Int::plus); acc }
+            moduleLabelFrequency.entries.sortedByDescending { (label, freq) -> freq / (labelFrequency[label] ?: 1) }.take(3)
+                .joinToString("-") { it.key.lowercase() }
+        }
         // Rank by conductance
         val modulesConductance = modules.mapValues { (thisCommunity, nodes) ->
             val (intraEdges, extraEdges) = nodes.flatMap { node -> graph.getOutEdges(node) }

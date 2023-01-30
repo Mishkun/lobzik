@@ -5,7 +5,7 @@
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
     </style>
     <meta charset="utf-8">
-    <title>detekt report</title>
+    <title>Lobzik report</title>
     <script src="https://bumbu.me/svg-pan-zoom/dist/svg-pan-zoom.min.js"></script>
     <script>
      window.onload = function() {
@@ -53,7 +53,7 @@
             border-radius: 4px;
         }
 
-        .rule-container {
+        .graph-container {
             background: linear-gradient(90deg, rgba(105, 33, 224, 0.2) 0%, rgba(158, 41, 156, 0.2) 100%);
             border-radius: 4px;
             padding-left: 1em;
@@ -105,26 +105,9 @@
             overflow: auto;
         }
 
-        .lineno {
-            margin-right: 24px;
-            color: #9771c3;
-            background-color: rgba(230, 211, 243, 0.51);
-        }
-
-        .error {
-            background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4AwCFR4T/3uLMgAAADxJREFUCNdNyLERQEAABMCjL4lQwIzcjErpguAL+C9AvgKJDbeD/PRpLdm35Hm+MU+cB+tCKaJW4L4YBy+CAiLJrFs9mgAAAABJRU5ErkJggg==) bottom repeat-x;
-        }
-
-        .exception {
-            color: #b60808;
-            display: inline-block;
-            background-color: #ecdada;
-            border-color: #b60808;
-            border-radius: 10px;
-            border: solid 2px;
-            padding-left: 16px;
-            padding-right: 16px;
-            margin-bottom: 16px;
+        .graph {
+            width: 100%;
+            height: 500px;
         }
     </style>
 </head>
@@ -143,12 +126,6 @@
 <p>List of modules identified with Lobzik, sorted from best to worst, according to the metrics</p>
 
 @@monolith_modules@@
-
-<h2>Modules</h2>
-
-<p>List of modules identified with Lobzik, sorted from best to worst, according to the metrics</p>
-
-@@@modules@@@
 
 <h2>Whole graph</h2>
 
