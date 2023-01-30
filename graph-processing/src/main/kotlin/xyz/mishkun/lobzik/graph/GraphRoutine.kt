@@ -1,8 +1,13 @@
 package xyz.mishkun.lobzik.graph
 
+import kotlinx.html.details
+import kotlinx.html.div
 import kotlinx.html.h3
+import kotlinx.html.id
 import kotlinx.html.li
+import kotlinx.html.p
 import kotlinx.html.stream.createHTML
+import kotlinx.html.summary
 import kotlinx.html.ul
 import org.gephi.appearance.api.AppearanceController
 import org.gephi.appearance.api.PartitionFunction
@@ -44,30 +49,29 @@ import java.io.IOException
 import java.io.StringWriter
 import kotlin.math.ceil
 
-
 class GraphRoutine(
     val monolithModule: String,
     val featureModules: List<String>,
     val nodesFile: File,
     val edgesFile: File,
-    val outputDir: File,
+    val outputDir: File
 ) {
     fun doAnalysis() {
-        //Init a project - and therefore a workspace
+        // Init a project - and therefore a workspace
         val pc = Lookup.getDefault().lookup(ProjectController::class.java)
         pc.newProject()
         val workspace = pc.currentWorkspace
-        //Get controllers and models
+        // Get controllers and models
         val importController = Lookup.getDefault().lookup(ImportController::class.java)
-        //Import file
+        // Import file
         val nodesContainer: Container = importController.importContainer(nodesFile) ?: return
         val edgesContainer: Container = importController.importContainer(edgesFile) ?: return
-        //Append imported data to GraphAPI
+        // Append imported data to GraphAPI
         importController.process(arrayOf(nodesContainer, edgesContainer), MergeProcessor(), workspace)
 
         val graphModel: GraphModel = Lookup.getDefault().lookup(GraphController::class.java).graphModel
 
-//See if graph is well imported
+// See if graph is well imported
         val graph: DirectedGraph = graphModel.directedGraph
         println("Nodes: " + graph.nodeCount)
         println("Edges: " + graph.edgeCount)
@@ -76,7 +80,7 @@ class GraphRoutine(
         val appearanceModel = appearanceController.model
 
         val filterController: FilterController = Lookup.getDefault().lookup(FilterController::class.java)
-//Filter Giant Component
+// Filter Giant Component
         val giantComponentFilter = GiantComponentBuilder.GiantComponentFilter()
         giantComponentFilter.init(graph)
         val giantComponentQuery = filterController.createQuery(giantComponentFilter)
@@ -85,15 +89,13 @@ class GraphRoutine(
         val interfaceFilter = EqualBooleanFilter.Node(interfaceColumn)
         interfaceFilter.isMatch = false
         val interfaceQuery = filterController.createQuery(interfaceFilter)
-        filterController.setSubQuery(giantComponentQuery,interfaceQuery)
+        filterController.setSubQuery(giantComponentQuery, interfaceQuery)
 
         val projectColumn = graphModel.nodeTable.getColumn("module")
         val projFunc = appearanceModel.getNodeFunction(projectColumn, PartitionElementColorTransformer::class.java)
         val projPartition = (projFunc as PartitionFunction).partition
         val projFilter = NodePartitionFilter(appearanceModel, projPartition)
-        val selected = projFilter.partition.getValues(graph).filter { value ->
-            value.toString() == monolithModule || featureModules.map { it.toRegex() }.any { it.matches(value.toString()) }
-        }
+        val selected = projFilter.partition.getValues(graph).map { it.toString() }.filter(::filterMonolithOrFeatures)
         projFilter.parts = selected.toSet()
         projFilter.init(graph)
         val partitionProjectQuery: Query = filterController.createQuery(projFilter)
@@ -101,8 +103,7 @@ class GraphRoutine(
 
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
-
-//PageRank
+// PageRank
         val pageRankAlgo = PageRank()
         pageRankAlgo.directed = true
         pageRankAlgo.execute(graphModel)
@@ -118,18 +119,17 @@ class GraphRoutine(
         filterController.setSubQuery(partitionProjectQuery, pageRankQuery)
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
-
-//See visible graph stats
+// See visible graph stats
 
         filterController.exportToColumn("isModularized", giantComponentQuery)
-//See visible graph stats
+// See visible graph stats
         val graphVisible = graphModel.undirectedGraphVisible
         println("Nodes: " + graphVisible.nodeCount)
         println("Edges: " + graphVisible.edgeCount)
 
-//Run YifanHuLayout for 100 passes - The layout always takes the current visible view
+// Run YifanHuLayout for 100 passes - The layout always takes the current visible view
 
-//Run YifanHuLayout for 100 passes - The layout always takes the current visible view
+// Run YifanHuLayout for 100 passes - The layout always takes the current visible view
         ForceAtlas2(null).also { layout ->
             layout.setGraphModel(graphModel)
             layout.resetPropertiesValues()
@@ -142,7 +142,7 @@ class GraphRoutine(
             layout.endAlgo()
         }
 
-//Get Modularity And Degree
+// Get Modularity And Degree
         val modularity = Modularity()
         modularity.useWeight = true
         modularity.execute(graphModel)
@@ -150,7 +150,7 @@ class GraphRoutine(
         val degree = Degree()
         degree.execute(graphModel)
 
-//Rank color by Modularity Class
+// Rank color by Modularity Class
         val modColumn = graphModel.nodeTable.getColumn(Modularity.MODULARITY_CLASS)
         val func = appearanceModel.getNodeFunction(modColumn, PartitionElementColorTransformer::class.java)
         val partition = (func as PartitionFunction).partition
@@ -159,19 +159,18 @@ class GraphRoutine(
         partition.setColors(graph, palette.colors)
         appearanceController.transform(func)
 
-
-        val visibleGraph = graphModel.directedGraphVisible
-        val modules = visibleGraph.nodes.groupBy { it.getAttribute(Modularity.MODULARITY_CLASS) as Int }
+        val modules = graphModel.directedGraphVisible.nodes.groupBy { it.getAttribute(Modularity.MODULARITY_CLASS) as Int }
         val moduleLabels = modules.mapValues { (_, nodes) -> nodes.maxBy { it.getAttribute(Degree.DEGREE) as Int }.label }
-        //Rank by conductance
+        // Rank by conductance
         val modulesConductance = modules.mapValues { (thisCommunity, nodes) ->
-            val (intraEdges, extraEdges) = nodes.flatMap { node -> visibleGraph.getOutEdges(node) }.partition { it.target.getAttribute(Modularity.MODULARITY_CLASS) == thisCommunity }
+            val (intraEdges, extraEdges) = nodes.flatMap { node -> graph.getOutEdges(node) }
+                .partition { it.target.getAttribute(Modularity.MODULARITY_CLASS) == thisCommunity }
             intraEdges.count().toDouble() / (intraEdges.count() + extraEdges.count())
         }
 
-//Preview
+// Preview
 
-//Preview
+// Preview
         val previewModel = Lookup.getDefault().lookup(PreviewController::class.java).model
         previewModel.properties.putValue(PreviewProperty.SHOW_NODE_LABELS, true)
         previewModel.properties.putValue(PreviewProperty.ARROW_SIZE, 0.0)
@@ -180,15 +179,15 @@ class GraphRoutine(
         previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MAX, 2.0)
         previewModel.properties.putValue(
             PreviewProperty.NODE_LABEL_FONT,
-            previewModel.properties.getFontValue(PreviewProperty.NODE_LABEL_FONT).deriveFont(8)
+            previewModel.properties.getFontValue(PreviewProperty.NODE_LABEL_FONT).deriveFont(5)
         )
 
-//Export
+// Export
 
-//Export
+// Export
         val ec = Lookup.getDefault().lookup(ExportController::class.java)
-        val exporter = ec.getExporter("gexf") as GraphExporter //Get GEXF exporter
-        exporter.isExportVisible = true //Only exports the visible (filtered) graph
+        val exporter = ec.getExporter("gexf") as GraphExporter // Get GEXF exporter
+        exporter.isExportVisible = true // Only exports the visible (filtered) graph
         exporter.workspace = workspace
         try {
             ec.exportFile(File(outputDir, "io_gexf.gexf"), exporter)
@@ -197,9 +196,8 @@ class GraphRoutine(
             return
         }
 
-
-        //Export to Writer
-        val exporterGraphML = ec.getExporter("graphml") //Get GraphML exporter
+        // Export to Writer
+        val exporterGraphML = ec.getExporter("graphml") // Get GraphML exporter
         exporterGraphML.workspace = workspace
         try {
             ec.exportFile(File(outputDir, "io_graphml.graphml"), exporterGraphML)
@@ -212,6 +210,9 @@ class GraphRoutine(
             .filterValues { it > cap }
         exportHtml(ec, workspace, modulesConductance, moduleLabels, modules, pagerank, filterController, projFilter, graphModel)
     }
+
+    private fun filterMonolithOrFeatures(value: String): Boolean =
+        value == monolithModule || featureModules.map { it.toRegex() }.any { it.matches(value) }
 
     private fun exportHtml(
         ec: ExportController,
@@ -253,13 +254,59 @@ class GraphRoutine(
                 LabelAdjust(null).apply {
                     setGraphModel(graphModel)
                     initAlgo()
-                    goAlgo()
+                    var i = 0
+                    while (i < 100 && canAlgo()) {
+                        goAlgo()
+                        i++
+                    }
                     endAlgo()
                 }
-                //PNG Exporter config and export to Byte array
-                appendLine(createHTML().h3 { +"${moduleLabels[module]}: ${modulesConductance[module]}" })
+                // PNG Exporter config and export to Byte array
+                appendLine(createHTML().h3 { +"${moduleLabels[module]}" })
+                appendLine(createHTML().p { +"Conductance score: ${modulesConductance[module]}" })
                 appendLine(ec.renderSvg(workspace))
-                appendLine(createHTML().ul { modules[module]?.forEach { li { +it.label } } })
+                appendLine(
+                    createHTML().details {
+                        id = moduleLabels[module].toString()
+                        open = true
+                        summary("graph-container") {
+                            +"Classes of this module"
+                        }
+                        modules[module]?.groupBy { it.getAttribute("module") }
+                            ?.forEach { (module, nodes) ->
+                                p { +"currently found in $module module:" }
+                                ul {
+                                    nodes.forEach {
+                                        li { +(it.label ?: it.id.toString()) }
+                                    }
+                                }
+                            }
+                    }
+                )
+                appendLine(
+                    createHTML().div {
+                        val dependenciesCuts = modules[module]?.flatMap { node ->
+                            graphModel.directedGraph.getOutEdges(node)
+                                .filter { modules[module]?.contains(it.target) != true }
+                                .filter { monolithModule == it.target.getAttribute("module") }
+                                .map { edge -> node.label to edge.target.label }
+                        }.orEmpty()
+                        if (dependenciesCuts.isNotEmpty()) {
+                            details {
+                                summary("graph-container") {
+                                    +"To extract this module you should break these dependencies:"
+                                }
+                                ul {
+                                    dependenciesCuts.forEach { (src, trg) ->
+                                        li { +"$src -> $trg" }
+                                    }
+                                }
+                            }
+                        } else {
+                            p { +"To extract this module you don't need to break any dependencies in $monolithModule" }
+                        }
+                    }
+                )
                 filterController.remove(query)
                 filterController.remove(query2)
             }
@@ -289,15 +336,15 @@ class GraphRoutine(
                 ex.printStackTrace()
                 null
             }
-        return wholeSvg?.toString()?.replace("<svg", "<svg class=\"graph\" style=\"width: 50%; height: 500px;\"")
+        return wholeSvg?.toString()?.replace("<svg", "<svg class=\"graph\"")
     }
 
     private fun ImportController.importContainer(file: File): Container? {
         val container: Container
         try {
             container = importFile(file)
-            container.loader.setEdgeDefault(EdgeDirectionDefault.DIRECTED) //Force DIRECTED
-            container.loader.setAllowAutoNode(false) //Don't create missing nodes
+            container.loader.setEdgeDefault(EdgeDirectionDefault.DIRECTED) // Force DIRECTED
+            container.loader.setAllowAutoNode(false) // Don't create missing nodes
         } catch (ex: Exception) {
             ex.printStackTrace()
             return null
@@ -319,8 +366,6 @@ class GraphRoutine(
         }
 
         override fun finish() {
-
         }
-
     }
 }
