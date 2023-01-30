@@ -1,5 +1,9 @@
 package xyz.mishkun.lobzik.graph
 
+import kotlinx.html.h3
+import kotlinx.html.li
+import kotlinx.html.stream.createHTML
+import kotlinx.html.ul
 import org.gephi.appearance.api.AppearanceController
 import org.gephi.appearance.api.PartitionFunction
 import org.gephi.appearance.plugin.PartitionElementColorTransformer
@@ -13,7 +17,11 @@ import org.gephi.filters.plugin.attribute.AttributeRangeBuilder
 import org.gephi.filters.plugin.graph.GiantComponentBuilder
 import org.gephi.filters.plugin.partition.PartitionBuilder.NodePartitionFilter
 import org.gephi.filters.spi.NodeFilter
-import org.gephi.graph.api.*
+import org.gephi.graph.api.DirectedGraph
+import org.gephi.graph.api.Graph
+import org.gephi.graph.api.GraphController
+import org.gephi.graph.api.GraphModel
+import org.gephi.graph.api.Node
 import org.gephi.io.exporter.api.ExportController
 import org.gephi.io.exporter.preview.SVGExporter
 import org.gephi.io.exporter.spi.GraphExporter
@@ -26,12 +34,14 @@ import org.gephi.layout.plugin.labelAdjust.LabelAdjust
 import org.gephi.preview.api.PreviewController
 import org.gephi.preview.api.PreviewProperty
 import org.gephi.project.api.ProjectController
+import org.gephi.project.api.Workspace
 import org.gephi.statistics.plugin.Degree
 import org.gephi.statistics.plugin.Modularity
 import org.gephi.statistics.plugin.PageRank
 import org.openide.util.Lookup
 import java.io.File
 import java.io.IOException
+import java.io.StringWriter
 import kotlin.math.ceil
 
 
@@ -198,54 +208,88 @@ class GraphRoutine(
             return
         }
 
-        val svgExporter = ec.getExporter("svg") as SVGExporter
-        svgExporter.workspace = workspace
-        try {
-            ec.exportFile(File(outputDir, "whole_graph.svg"), svgExporter)
-        } catch (ex: IOException) {
-            ex.printStackTrace()
-            return
+        val pagerank = graphModel.nodeTable.graph.nodes.associate { it.label to it.getAttribute(PageRank.PAGERANK) as Double }
+            .filterValues { it > cap }
+        exportHtml(ec, workspace, modulesConductance, moduleLabels, modules, pagerank, filterController, projFilter, graphModel)
+    }
+
+    private fun exportHtml(
+        ec: ExportController,
+        workspace: Workspace?,
+        modulesConductance: Map<Int, Double>,
+        moduleLabels: Map<Int, String>,
+        modules: Map<Int, List<Node>>,
+        pageRank: Map<String, Double>,
+        filterController: FilterController,
+        projFilter: NodePartitionFilter,
+        graphModel: GraphModel
+    ) {
+        val wholeSvg = ec.renderSvg(workspace)
+        File(outputDir, "whole_graph.svg").writeText(wholeSvg.toString())
+
+        val modules = buildString {
+            for ((idx, module) in modulesConductance.keys.sortedByDescending { modulesConductance[it] }
+                .withIndex()) {
+                println("started exporting ${moduleLabels[module]} [$idx/${modules.keys.size}]")
+                val nodeSet = modules[module].orEmpty().toSet()
+                println("nodeSet contains ${nodeSet.size} classes")
+                val filter = NodeCollectionFilter(nodeSet)
+                val query2 = filterController.createQuery(projFilter)
+                val query = filterController.createQuery(filter)
+                filterController.setSubQuery(query2, query)
+                graphModel.visibleView = filterController.filter(query2)
+                ForceAtlas2(null).also { layout ->
+                    layout.setGraphModel(graphModel)
+                    layout.resetPropertiesValues()
+                    layout.isNormalizeEdgeWeights = true
+                    layout.initAlgo()
+                    var i = 0
+                    while (i < 100 && layout.canAlgo()) {
+                        layout.goAlgo()
+                        i += 1
+                    }
+                    layout.endAlgo()
+                }
+                LabelAdjust(null).apply {
+                    setGraphModel(graphModel)
+                    initAlgo()
+                    goAlgo()
+                    endAlgo()
+                }
+                //PNG Exporter config and export to Byte array
+                appendLine(createHTML().h3 { +"${moduleLabels[module]}: ${modulesConductance[module]}" })
+                appendLine(ec.renderSvg(workspace))
+                appendLine(createHTML().ul { modules[module]?.forEach { li { +it.label } } })
+                filterController.remove(query)
+                filterController.remove(query2)
+            }
         }
 
-        for ((idx, module) in modulesConductance.keys.sortedBy { modulesConductance[it] }.withIndex()) {
-            println("started exporting ${moduleLabels[module]} [$idx/${modules.keys.size}]")
-            val nodeSet = modules[module].orEmpty().toSet()
-            println("nodeSet contains ${nodeSet.size} classes")
-            val filter = NodeCollectionFilter(nodeSet)
-            val query2 = filterController.createQuery(projFilter)
-            val query = filterController.createQuery(filter)
-            filterController.setSubQuery(query2, query)
-            graphModel.visibleView = filterController.filter(query2)
-            ForceAtlas2(null).also { layout ->
-                layout.setGraphModel(graphModel)
-                layout.resetPropertiesValues()
-                layout.isNormalizeEdgeWeights = true
-                layout.initAlgo()
-                var i = 0
-                while (i < 100 && layout.canAlgo()) {
-                    layout.goAlgo()
-                    i += 1
-                }
-                layout.endAlgo()
-            }
-            LabelAdjust(null).apply {
-                setGraphModel(graphModel)
-                initAlgo()
-                goAlgo()
-                endAlgo()
-            }
-            //PNG Exporter config and export to Byte array
-            val svgExporter = ec.getExporter("svg") as SVGExporter
-            svgExporter.workspace = workspace
+        val nodesPageRank = createHTML().ul {
+            pageRank.entries.sortedBy { it.value }.forEach { pageranked -> li { +"${pageranked.key}: ${pageranked.value}" } }
+        }
+
+        val template = javaClass.getResource("/template.html").readText()
+            .replace("@@whole graph@@", wholeSvg.toString())
+            .replace("@@monolith_modules@@", modules)
+            .replace("@@cores@@", nodesPageRank)
+
+        File(outputDir, "report.html").writeText(template)
+    }
+
+    private fun ExportController.renderSvg(workspace: Workspace?): String? {
+        val svgExporter = getExporter("svg") as SVGExporter
+        svgExporter.workspace = workspace
+        val wholeSvg =
             try {
-                ec.exportFile(File(outputDir, "${idx}_${moduleLabels[module]}_${modulesConductance[module]}.svg"), svgExporter)
+                val writer = StringWriter()
+                exportWriter(writer, svgExporter)
+                writer
             } catch (ex: IOException) {
                 ex.printStackTrace()
-                return
+                null
             }
-            filterController.remove(query)
-            filterController.remove(query2)
-        }
+        return wholeSvg?.toString()?.replace("<svg", "<svg class=\"graph\" style=\"width: 50%; height: 500px;\"")
     }
 
     private fun ImportController.importContainer(file: File): Container? {
