@@ -48,6 +48,7 @@ import java.io.File
 import java.io.IOException
 import java.io.StringWriter
 import kotlin.math.ceil
+import kotlin.math.log2
 
 class GraphRoutine(
     val monolithModule: String,
@@ -159,13 +160,25 @@ class GraphRoutine(
         partition.setColors(graph, palette.colors)
         appearanceController.transform(func)
 
+        // extract module nodes from graph model
         val modules = graphModel.directedGraphVisible.nodes.groupBy { it.getAttribute(Modularity.MODULARITY_CLASS) as Int }
-        val labelFrequency = graphModel.directedGraphVisible.nodes.flatMap { it.label.split("(?<=.)(?=\\p{Upper})".toRegex()) }
-            .fold(mutableMapOf<String, Int>()) { acc, el -> acc.merge(el, 1, Int::plus); acc }
-        val moduleLabels = modules.mapValues { (_, nodes) ->
-            val moduleLabelFrequency = nodes.flatMap { it.label.split("(?<=.)(?=\\p{Upper})".toRegex()) }
+        // Execute tf-idf on module labels treating modules as documents
+        val tf = modules.mapValues { (_, nodes) ->
+            nodes.flatMap { it.label.split("(?<=.)(?=\\p{Upper})".toRegex()) }
                 .fold(mutableMapOf<String, Int>()) { acc, el -> acc.merge(el, 1, Int::plus); acc }
-            moduleLabelFrequency.entries.sortedByDescending { (label, freq) -> freq / (labelFrequency[label] ?: 1) }.take(3)
+        }
+        val idf = modules.mapValues { (_, nodes) ->
+            nodes.flatMap { it.label.split("(?<=.)(?=\\p{Upper})".toRegex()) }
+                .distinct().associateWith { label ->
+                    log2(modules.size.toDouble() / (modules.values.count { nodeList -> nodeList.any { node -> node.label.contains(label) } }))
+                }
+        }
+        val moduleLabels = modules.mapValues { (thisCommunity, nodes) ->
+            val tfidf = tf.getValue(thisCommunity).mapValues { (label, freq) ->
+                freq * idf.getValue(thisCommunity).getValue(label)
+            }
+            tfidf.entries.sortedByDescending { it.value }
+                .take(3)
                 .joinToString("-") { it.key.lowercase() }
         }
         // Rank by conductance
