@@ -28,7 +28,6 @@ import org.gephi.io.importer.api.EdgeDirectionDefault
 import org.gephi.io.importer.api.ImportController
 import org.gephi.io.processor.plugin.MergeProcessor
 import org.gephi.layout.plugin.forceAtlas2.ForceAtlas2
-import org.gephi.layout.plugin.labelAdjust.LabelAdjust
 import org.gephi.preview.api.PreviewController
 import org.gephi.preview.api.PreviewProperty
 import org.gephi.project.api.ProjectController
@@ -38,8 +37,6 @@ import org.gephi.statistics.plugin.Modularity
 import org.gephi.statistics.plugin.PageRank
 import org.openide.util.Lookup
 import space.kscience.plotly.*
-import space.kscience.plotly.Plotly.plot
-import space.kscience.plotly.models.Color
 import space.kscience.plotly.models.ScatterMode
 import java.io.File
 import java.io.IOException
@@ -260,7 +257,7 @@ class GraphRoutine(
         val wholeSvg = ec.renderSvg(workspace)
         File(outputDir, "whole_graph.svg").writeText(wholeSvg.toString())
 
-        val modules = buildString {
+        val monolithModulesRendered = buildString {
             for ((idx, module) in modulesConductance.keys.sortedByDescending { modulesConductance[it] }
                 .withIndex()) {
                 if (modules[module].orEmpty().none { it in monolithNodes }) {
@@ -401,6 +398,8 @@ class GraphRoutine(
                     tr {
                         th { +"Module" }
                         th { +"Conductance" }
+                        th { +"MonolithClasses" }
+                        th { +"NonMonolithClasses" }
                     }
                 }
                 tbody {
@@ -414,6 +413,8 @@ class GraphRoutine(
                                 }
                             }
                             td { +conductance.toString() }
+                            td { +modules[module].orEmpty().count { it in monolithNodes }.toString() }
+                            td { +modules[module].orEmpty().count { it !in monolithNodes }.toString() }
                         }
                     }
                 }
@@ -448,7 +449,7 @@ class GraphRoutine(
 
         val template = javaClass.getResource("/template.html").readText()
             .replace("@@whole graph@@", wholeSvg.toString())
-            .replace("@@monolith_modules@@", modules)
+            .replace("@@monolith_modules@@", monolithModulesRendered)
             .replace("@@monolith_modules_table@@", modulesTable)
             .replace("@@cores@@", nodesPageRank)
 
