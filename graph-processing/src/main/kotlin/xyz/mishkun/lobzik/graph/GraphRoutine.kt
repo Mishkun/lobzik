@@ -1,20 +1,7 @@
 package xyz.mishkun.lobzik.graph
 
-import kotlinx.html.details
-import kotlinx.html.div
-import kotlinx.html.h3
-import kotlinx.html.id
-import kotlinx.html.li
-import kotlinx.html.p
+import kotlinx.html.*
 import kotlinx.html.stream.createHTML
-import kotlinx.html.summary
-import kotlinx.html.table
-import kotlinx.html.tbody
-import kotlinx.html.td
-import kotlinx.html.th
-import kotlinx.html.thead
-import kotlinx.html.tr
-import kotlinx.html.ul
 import org.gephi.appearance.api.AppearanceController
 import org.gephi.appearance.api.PartitionFunction
 import org.gephi.appearance.plugin.PartitionElementColorTransformer
@@ -192,8 +179,9 @@ class GraphRoutine(
         val modulesConductance = modules.mapValues { (thisCommunity, nodes) ->
             val edges = nodes.flatMap { node -> graph.getOutEdges(node) }
             val intraEdges = edges
-                .count { it.target.getAttribute(Modularity.MODULARITY_CLASS) != thisCommunity }
-            intraEdges.toDouble() / edges.count()
+                .filter { it.target.getAttribute(Modularity.MODULARITY_CLASS) != thisCommunity }
+                .sumOf { it.weight }
+            intraEdges / nodes.count()
         }
 
 // Preview
@@ -355,8 +343,21 @@ class GraphRoutine(
             }
         }
 
-        val nodesPageRank = createHTML().ul {
-            pageRank.entries.sortedByDescending { it.value }.forEach { pageranked -> li { +"${pageranked.key}: ${pageranked.value}" } }
+        val nodesPageRank = createHTML().table {
+            thead {
+                tr {
+                    th { +"Class" }
+                    th { +"PageRank" }
+                }
+            }
+            tbody {
+                pageRank.entries.sortedByDescending { it.value }.forEach { pageranked ->
+                    tr {
+                        td { +pageranked.key }
+                        td { +pageranked.value.toString() }
+                    }
+                }
+            }
         }
 
         val modulesTable = createHTML().table {
@@ -369,7 +370,13 @@ class GraphRoutine(
             tbody {
                 modulesConductance.entries.sortedByDescending { it.value }.forEach { (module, conductance) ->
                     tr {
-                        td { +moduleLabels[module].toString() }
+                        td {
+                            val moduleName = moduleLabels[module].toString()
+                            a {
+                                href = moduleName
+                                +moduleName
+                            }
+                        }
                         td { +conductance.toString() }
                     }
                 }
