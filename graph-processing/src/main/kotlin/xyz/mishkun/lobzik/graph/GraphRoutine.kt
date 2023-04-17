@@ -264,12 +264,16 @@ class GraphRoutine(
             //System.out.println(textProperties.getText());
         }
 
+        val monolithNodes = graphModel.graph.nodes.filter { it.getAttribute("module") == monolithModule }
         val wholeSvg = ec.renderSvg(workspace)
         File(outputDir, "whole_graph.svg").writeText(wholeSvg.toString())
 
         val modules = buildString {
             for ((idx, module) in modulesConductance.keys.sortedByDescending { modulesConductance[it] }
                 .withIndex()) {
+                if (modules[module].orEmpty().none { it in monolithNodes }) {
+                    continue
+                }
                 println("started exporting ${moduleLabels[module]} [$idx/${modules.keys.size}]")
                 val nodeSet = modules[module].orEmpty().toSet()
                 println("nodeSet contains ${nodeSet.size} classes")
