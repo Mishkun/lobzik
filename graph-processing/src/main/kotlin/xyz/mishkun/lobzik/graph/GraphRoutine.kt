@@ -352,7 +352,7 @@ class GraphRoutine(
         }
 
         val nodesPageRank = createHTML().ul {
-            pageRank.entries.sortedBy { it.value }.forEach { pageranked -> li { +"${pageranked.key}: ${pageranked.value}" } }
+            pageRank.entries.sortedByDescending { it.value }.forEach { pageranked -> li { +"${pageranked.key}: ${pageranked.value}" } }
         }
 
         val modulesTable = createHTML().table {
