@@ -409,7 +409,7 @@ class GraphRoutine(
                             td {
                                 val moduleName = moduleLabels[module].toString()
                                 a {
-                                    href = moduleName
+                                    href = "#$moduleName"
                                     +moduleName
                                 }
                             }
