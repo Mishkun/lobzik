@@ -33,8 +33,8 @@ import org.gephi.preview.api.PreviewProperty
 import org.gephi.project.api.ProjectController
 import org.gephi.project.api.Workspace
 import org.gephi.statistics.plugin.Degree
+import org.gephi.statistics.plugin.Hits
 import org.gephi.statistics.plugin.Modularity
-import org.gephi.statistics.plugin.PageRank
 import org.openide.util.Lookup
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
@@ -99,20 +99,21 @@ class GraphRoutine(
 
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
-// PageRank
-        val pageRankAlgo = PageRank()
-        pageRankAlgo.directed = true
-        pageRankAlgo.execute(graphModel)
+        // Authorithy and Hub
+        val hitsAlgo = Hits()
+        hitsAlgo.undirected = false
+        hitsAlgo.execute(graphModel)
 
-        val column = graphModel.nodeTable.getColumn(PageRank.PAGERANK)
-        val pagerankFilter = AttributeRangeBuilder.AttributeRangeFilter.Node(column)
-        val cap = graphModel.nodeIndex.values(column).map { it as Double }.sorted()
+
+        val column = graphModel.nodeTable.getColumn(Hits.AUTHORITY)
+        val hitsFilter = AttributeRangeBuilder.AttributeRangeFilter.Node(column)
+        val cap = graphModel.nodeIndex.values(column).map { it as Float }.sorted()
             .run { elementAt(ceil(size * 0.95).toInt()) }
-        pagerankFilter.init(graph)
-        pagerankFilter.range = Range(0.0, cap)
+        hitsFilter.init(graph)
+        hitsFilter.range = Range(0f, Float.MAX_VALUE)
 
-        val pageRankQuery = filterController.createQuery(pagerankFilter)
-        filterController.setSubQuery(partitionProjectQuery, pageRankQuery)
+        val hitsQuery = filterController.createQuery(hitsFilter)
+        filterController.setSubQuery(partitionProjectQuery, hitsQuery)
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
 // See visible graph stats
@@ -224,9 +225,9 @@ class GraphRoutine(
             return
         }
 
-        val pagerank = graphModel.nodeTable.graph.nodes.associate { it.label to it.getAttribute(PageRank.PAGERANK) as Double }
+        val authorities = graphModel.nodeTable.graph.nodes.associate { it.label to it.getAttribute(Hits.AUTHORITY) as Float }
             .filterValues { it > cap }
-        exportHtml(ec, workspace, modulesConductance, moduleLabels, modules, pagerank, filterController, projFilter, graphModel)
+        exportHtml(ec, workspace, modulesConductance, moduleLabels, modules, authorities, filterController, projFilter, graphModel)
     }
 
     private fun filterMonolithOrFeatures(value: String): Boolean =
@@ -238,7 +239,7 @@ class GraphRoutine(
         modulesConductance: Map<Int, Double>,
         moduleLabels: Map<Int, String>,
         modules: Map<Int, List<Node>>,
-        pageRank: Map<String, Double>,
+        authorities: Map<String, Float>,
         filterController: FilterController,
         projFilter: NodePartitionFilter,
         graphModel: GraphModel,
@@ -344,21 +345,21 @@ class GraphRoutine(
             }
         }
 
-        val nodesPageRank = createHTML().details {
-            summary("graph-container") { +"Class outliers rated by PageRank" }
+        val nodesAuth = createHTML().details {
+            summary("graph-container") { +"Class outliers rated by Authority" }
             div {
                 table {
                     thead {
                         tr {
                             th { +"Class" }
-                            th { +"PageRank" }
+                            th { +"Authority" }
                         }
                     }
                     tbody {
-                        pageRank.entries.sortedByDescending { it.value }.forEach { pageranked ->
+                        authorities.entries.sortedByDescending { it.value }.forEach { authority ->
                             tr {
-                                td { +pageranked.key }
-                                td { +pageranked.value.toString() }
+                                td { +authority.key }
+                                td { +authority.value.toString() }
                             }
                         }
                     }
@@ -366,7 +367,7 @@ class GraphRoutine(
                 div {
                     Plotly.plot {
                         scatter {
-                            val values = pageRank.entries.sortedBy { it.value }
+                            val values = authorities.entries.sortedBy { it.value }
                             y.set(values.map { it.value }.toList())
                             x.set(values.map { it.key }.toList())
                             mode = ScatterMode.markers
@@ -375,13 +376,13 @@ class GraphRoutine(
                             }
                         }
                         layout {
-                            title = "Classes sorted by pageRank"
+                            title = "Classes sorted by authorities"
                             xaxis {
                                 title = "Class"
                                 showticklabels = false
                             }
                             yaxis {
-                                title = "PageRank"
+                                title = "Authority"
                             }
                         }
                     }.let { plot ->
@@ -451,7 +452,7 @@ class GraphRoutine(
             .replace("@@whole graph@@", wholeSvg.toString())
             .replace("@@monolith_modules@@", monolithModulesRendered)
             .replace("@@monolith_modules_table@@", modulesTable)
-            .replace("@@cores@@", nodesPageRank)
+            .replace("@@cores@@", nodesAuth)
 
         File(outputDir, "report.html").writeText(template)
     }
