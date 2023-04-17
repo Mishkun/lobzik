@@ -56,12 +56,13 @@ import java.io.StringWriter
 import kotlin.math.ceil
 import kotlin.math.log2
 
+
 class GraphRoutine(
     val monolithModule: String,
     val featureModules: List<String>,
     val nodesFile: File,
     val edgesFile: File,
-    val outputDir: File
+    val outputDir: File,
 ) {
     fun doAnalysis() {
         // Init a project - and therefore a workspace
@@ -142,7 +143,7 @@ class GraphRoutine(
             layout.resetPropertiesValues()
             layout.initAlgo()
             var i = 0
-            while (i < 1000 && layout.canAlgo()) {
+            while (i < 100 && layout.canAlgo()) {
                 layout.goAlgo()
                 i += 1
             }
@@ -189,9 +190,10 @@ class GraphRoutine(
         }
         // Rank by conductance
         val modulesConductance = modules.mapValues { (thisCommunity, nodes) ->
-            val (intraEdges, extraEdges) = nodes.flatMap { node -> graph.getOutEdges(node) }
-                .partition { it.target.getAttribute(Modularity.MODULARITY_CLASS) == thisCommunity }
-            intraEdges.count().toDouble() / (intraEdges.count() + extraEdges.count())
+            val edges = nodes.flatMap { node -> graph.getOutEdges(node) }
+            val intraEdges = edges
+                .count { it.target.getAttribute(Modularity.MODULARITY_CLASS) != thisCommunity }
+            intraEdges.toDouble() / edges.count()
         }
 
 // Preview
@@ -201,6 +203,7 @@ class GraphRoutine(
         previewModel.properties.putValue(PreviewProperty.SHOW_NODE_LABELS, true)
         previewModel.properties.putValue(PreviewProperty.ARROW_SIZE, 0.0)
         previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT, true)
+        previewModel.properties.putValue(PreviewProperty.EDGE_CURVED, false)
         previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MIN, 1.0)
         previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MAX, 2.0)
         previewModel.properties.putValue(
@@ -249,8 +252,18 @@ class GraphRoutine(
         pageRank: Map<String, Double>,
         filterController: FilterController,
         projFilter: NodePartitionFilter,
-        graphModel: GraphModel
+        graphModel: GraphModel,
     ) {
+        for (n in graphModel.graph.nodes) {
+            val textProperties = n.textProperties
+            val label = n.label ?: ""
+            textProperties.text = label
+            textProperties.setDimensions((label.length * 12).toFloat(), 30f)
+            //System.out.println(textProperties.getWidth());
+            //System.out.println(textProperties.getHeight());
+            //System.out.println(textProperties.getText());
+        }
+
         val wholeSvg = ec.renderSvg(workspace)
         File(outputDir, "whole_graph.svg").writeText(wholeSvg.toString())
 
@@ -271,7 +284,7 @@ class GraphRoutine(
                     layout.isNormalizeEdgeWeights = true
                     layout.initAlgo()
                     var i = 0
-                    while (i < 100 && layout.canAlgo()) {
+                    while (i < 25 && layout.canAlgo()) {
                         layout.goAlgo()
                         i += 1
                     }
@@ -281,7 +294,7 @@ class GraphRoutine(
                     setGraphModel(graphModel)
                     initAlgo()
                     var i = 0
-                    while (i < 100 && canAlgo()) {
+                    while (i < 25 && canAlgo()) {
                         goAlgo()
                         i++
                     }
