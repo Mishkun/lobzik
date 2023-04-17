@@ -378,13 +378,13 @@ class GraphRoutine(
                             }
                         }
                         layout {
-                            title = "PageRank"
+                            title = "Classes sorted by pageRank"
                             xaxis {
-                                title = "PageRank"
+                                title = "Class"
                                 showticklabels = false
                             }
                             yaxis {
-                                title = "Class"
+                                title = "PageRank"
                             }
                         }
                     }.let { plot ->
@@ -393,33 +393,55 @@ class GraphRoutine(
                     }
                 }
             }
-//            }.let { plot ->
-//                div {
-//                    id = "plot"
-//                    unsafe { raw(plot) }
-//                }
-//            }
         }
 
-        val modulesTable = createHTML().table {
-            thead {
-                tr {
-                    th { +"Module" }
-                    th { +"Conductance" }
+        val modulesTable = createHTML().div {
+            table {
+                thead {
+                    tr {
+                        th { +"Module" }
+                        th { +"Conductance" }
+                    }
+                }
+                tbody {
+                    modulesConductance.entries.sortedByDescending { it.value }.forEach { (module, conductance) ->
+                        tr {
+                            td {
+                                val moduleName = moduleLabels[module].toString()
+                                a {
+                                    href = moduleName
+                                    +moduleName
+                                }
+                            }
+                            td { +conductance.toString() }
+                        }
+                    }
                 }
             }
-            tbody {
-                modulesConductance.entries.sortedByDescending { it.value }.forEach { (module, conductance) ->
-                    tr {
-                        td {
-                            val moduleName = moduleLabels[module].toString()
-                            a {
-                                href = moduleName
-                                +moduleName
-                            }
+            div {
+                Plotly.plot {
+                    scatter {
+                        val values = modulesConductance.entries.sortedBy { it.value }
+                        y.set(values.map { it.value }.toList())
+                        x.set(values.map { moduleLabels[it.key].toString() }.toList())
+                        mode = ScatterMode.markers
+                        marker {
+                            size = 16
                         }
-                        td { +conductance.toString() }
                     }
+                    layout {
+                        title = "Modules sorted by conductance"
+                        xaxis {
+                            title = "Module"
+                            showticklabels = false
+                        }
+                        yaxis {
+                            title = "Conductance"
+                        }
+                    }
+                }.let { plot ->
+                    id = "plot"
+                    unsafe { raw(plot.toHTML()) }
                 }
             }
         }
