@@ -311,7 +311,7 @@ class GraphRoutine(
                 appendLine(
                     createHTML().details {
                         id = moduleLabels[module].toString()
-                        open = true
+                        open = false
                         summary("graph-container") {
                             +"Classes of this module"
                         }
