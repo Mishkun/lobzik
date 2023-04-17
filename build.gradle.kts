@@ -30,7 +30,6 @@ dependencies {
     implementation(project(":graph-processing"))
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.6.10")
     implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.7.0")
-    implementation("space.kscience:plotlykt-core:0.5.0")
     implementation("com.android.tools.build:gradle-api:7.3.1")
     implementation("org.ow2.asm:asm:$VERSION_ASM")
     implementation("org.ow2.asm:asm-tree:$VERSION_ASM")

@@ -37,6 +37,10 @@ import org.gephi.statistics.plugin.Degree
 import org.gephi.statistics.plugin.Modularity
 import org.gephi.statistics.plugin.PageRank
 import org.openide.util.Lookup
+import space.kscience.plotly.*
+import space.kscience.plotly.Plotly.plot
+import space.kscience.plotly.models.Color
+import space.kscience.plotly.models.ScatterMode
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
@@ -270,28 +274,28 @@ class GraphRoutine(
                 val query = filterController.createQuery(filter)
                 filterController.setSubQuery(query2, query)
                 graphModel.visibleView = filterController.filter(query2)
-                ForceAtlas2(null).also { layout ->
-                    layout.setGraphModel(graphModel)
-                    layout.resetPropertiesValues()
-                    layout.isNormalizeEdgeWeights = true
-                    layout.initAlgo()
-                    var i = 0
-                    while (i < 25 && layout.canAlgo()) {
-                        layout.goAlgo()
-                        i += 1
-                    }
-                    layout.endAlgo()
-                }
-                LabelAdjust(null).apply {
-                    setGraphModel(graphModel)
-                    initAlgo()
-                    var i = 0
-                    while (i < 25 && canAlgo()) {
-                        goAlgo()
-                        i++
-                    }
-                    endAlgo()
-                }
+//                ForceAtlas2(null).also { layout ->
+//                    layout.setGraphModel(graphModel)
+//                    layout.resetPropertiesValues()
+//                    layout.isNormalizeEdgeWeights = true
+//                    layout.initAlgo()
+//                    var i = 0
+//                    while (i < 25 && layout.canAlgo()) {
+//                        layout.goAlgo()
+//                        i += 1
+//                    }
+//                    layout.endAlgo()
+//                }
+//                LabelAdjust(null).apply {
+//                    setGraphModel(graphModel)
+//                    initAlgo()
+//                    var i = 0
+//                    while (i < 25 && canAlgo()) {
+//                        goAlgo()
+//                        i++
+//                    }
+//                    endAlgo()
+//                }
                 // PNG Exporter config and export to Byte array
                 appendLine(createHTML().h3 { +"${moduleLabels[module]}" })
                 appendLine(createHTML().p { +"Conductance score: ${modulesConductance[module]}" })
@@ -343,21 +347,58 @@ class GraphRoutine(
             }
         }
 
-        val nodesPageRank = createHTML().table {
-            thead {
-                tr {
-                    th { +"Class" }
-                    th { +"PageRank" }
+        val nodesPageRank = createHTML().details {
+            summary("graph-container") { +"Class outliers rated by PageRank" }
+            div {
+                table {
+                    thead {
+                        tr {
+                            th { +"Class" }
+                            th { +"PageRank" }
+                        }
+                    }
+                    tbody {
+                        pageRank.entries.sortedByDescending { it.value }.forEach { pageranked ->
+                            tr {
+                                td { +pageranked.key }
+                                td { +pageranked.value.toString() }
+                            }
+                        }
+                    }
                 }
-            }
-            tbody {
-                pageRank.entries.sortedByDescending { it.value }.forEach { pageranked ->
-                    tr {
-                        td { +pageranked.key }
-                        td { +pageranked.value.toString() }
+                div {
+                    Plotly.plot {
+                        scatter {
+                            val values = pageRank.entries.sortedBy { it.value }
+                            y.set(values.map { it.value }.toList())
+                            x.set(values.map { it.key }.toList())
+                            mode = ScatterMode.markers
+                            marker {
+                                size = 16
+                            }
+                        }
+                        layout {
+                            title = "PageRank"
+                            xaxis {
+                                title = "PageRank"
+                                showticklabels = false
+                            }
+                            yaxis {
+                                title = "Class"
+                            }
+                        }
+                    }.let { plot ->
+                        id = "plot"
+                        unsafe { raw(plot.toHTML()) }
                     }
                 }
             }
+//            }.let { plot ->
+//                div {
+//                    id = "plot"
+//                    unsafe { raw(plot) }
+//                }
+//            }
         }
 
         val modulesTable = createHTML().table {
