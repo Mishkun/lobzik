@@ -8,6 +8,12 @@ import kotlinx.html.li
 import kotlinx.html.p
 import kotlinx.html.stream.createHTML
 import kotlinx.html.summary
+import kotlinx.html.table
+import kotlinx.html.tbody
+import kotlinx.html.td
+import kotlinx.html.th
+import kotlinx.html.thead
+import kotlinx.html.tr
 import kotlinx.html.ul
 import org.gephi.appearance.api.AppearanceController
 import org.gephi.appearance.api.PartitionFunction
@@ -336,9 +342,27 @@ class GraphRoutine(
             pageRank.entries.sortedBy { it.value }.forEach { pageranked -> li { +"${pageranked.key}: ${pageranked.value}" } }
         }
 
+        val modulesTable = createHTML().table {
+            thead {
+                tr {
+                    th { +"Module" }
+                    th { +"Conductance" }
+                }
+            }
+            tbody {
+                modulesConductance.entries.sortedByDescending { it.value }.forEach { (module, conductance) ->
+                    tr {
+                        td { +moduleLabels[module].toString() }
+                        td { +conductance.toString() }
+                    }
+                }
+            }
+        }
+
         val template = javaClass.getResource("/template.html").readText()
             .replace("@@whole graph@@", wholeSvg.toString())
             .replace("@@monolith_modules@@", modules)
+            .replace("@@monolith_modules_table@@", modulesTable)
             .replace("@@cores@@", nodesPageRank)
 
         File(outputDir, "report.html").writeText(template)
