@@ -14,7 +14,6 @@ class LobzikPlugin: Plugin<Project> {
     override fun apply(target: Project) {
         val extension = target.extensions.create("lobzik", LobzikExtension::class.java)
         extension.variantName.convention("debug")
-        extension.packagePrefix.convention("")
         extension.ignoredClasses.convention(listOf(".*Dagger.*", ".*Inject.*", ".*ViewBinding$", ".*Factory$", ".*_.*", "^R$", "^R\\$.*"))
         val configuration = target.configurations.create("projectDependencyGraph")
         val nodesConfiguration = target.configurations.create("projectDependencyGraphNodes")
