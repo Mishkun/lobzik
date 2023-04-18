@@ -27,6 +27,7 @@ import org.gephi.io.importer.api.EdgeDirectionDefault
 import org.gephi.io.importer.api.ImportController
 import org.gephi.io.processor.plugin.MergeProcessor
 import org.gephi.layout.plugin.forceAtlas2.ForceAtlas2
+import org.gephi.layout.plugin.labelAdjust.LabelAdjust
 import org.gephi.preview.api.PreviewController
 import org.gephi.preview.api.PreviewProperty
 import org.gephi.project.api.ProjectController
@@ -484,7 +485,7 @@ class GraphRoutine(
             }
         }
 
-        val modulesSvg = modulesGraph(modules, moduleLabels, graphModel.directedGraph)
+        val modulesSvg = modulesGraph(modules, moduleLabels, modulesConductance, graphModel)
 
         val template = javaClass.getResource("/template.html").readText()
             .replace("@@whole graph@@", modulesSvg.toString())
@@ -498,13 +499,16 @@ class GraphRoutine(
     private fun modulesGraph(
         modules: Map<Int, List<Node>>,
         labels: Map<Int, String>,
-        oldGraph: DirectedGraph
+        modulesConductance: Map<Int, Double>,
+        oldGraph: GraphModel
     ): String? {
+        val projectColumn = oldGraph.nodeTable.getColumn("module")
         val moduleMap = modules.mapValues { (module, nodes) ->
             nodes.flatMap { node ->
-                oldGraph.getOutEdges(node)
+                oldGraph.directedGraph.getOutEdges(node)
                     .mapNotNull { edge ->
                         (edge.target.getAttribute(Modularity.MODULARITY_CLASS) as? Int)?.takeUnless { it == module || it == 0 }
+                            ?.takeIf { edge.target.getAttribute(projectColumn).toString() == monolithModule }
                     }
             }
         }
@@ -514,22 +518,23 @@ class GraphRoutine(
         val graphModel: GraphModel = Lookup.getDefault().lookup(GraphController::class.java).graphModel
         for ((module, _) in modules) {
             val newNode = graphModel.factory().newNode(module.toString())
-            newNode.label = labels[module]
-            newNode.setSize(2f)
+            newNode.label = "${labels[module]};${String.format("%.3f", modulesConductance[module])}"
+            newNode.setSize(10f)
             newNode.color = generateRandomColor(Color.getColor("#e1a5fa"))
             graphModel.graph.addNode(newNode)
         }
         moduleMap.forEach { (src, dependencies) ->
             println("Adding edges from $src to $dependencies")
-            dependencies.fold(HashMap<Int, Int>()) { acc, i -> acc.merge(i,1, Int::plus); acc }
+            dependencies.fold(HashMap<Int, Int>()) { acc, i -> acc.merge(i, 1, Int::plus); acc }
                 .forEach { (trg, weight) ->
-                val newEdge = graphModel.factory().newEdge(
-                    graphModel.graph.getNode(src.toString()),
-                    graphModel.graph.getNode(trg.toString()),
-                    weight,
-                    true,
-                )
-                graphModel.graph.addEdge(newEdge)
+                    val newEdge = graphModel.factory().newEdge(
+                        graphModel.graph.getNode(src.toString()),
+                        graphModel.graph.getNode(trg.toString()),
+                        weight,
+                        true,
+                    )
+                    newEdge.label = weight.toString()
+                    graphModel.graph.addEdge(newEdge)
             }
         }
 
@@ -539,6 +544,9 @@ class GraphRoutine(
         ForceAtlas2(null).also { layout ->
             layout.setGraphModel(graphModel)
             layout.resetPropertiesValues()
+            layout.isNormalizeEdgeWeights = true
+            layout.edgeWeightInfluence = 10.0
+            layout.scalingRatio = 100.0
             layout.initAlgo()
             var i = 0
             while (i < 100 && layout.canAlgo()) {
@@ -547,17 +555,41 @@ class GraphRoutine(
             }
             layout.endAlgo()
         }
+        LabelAdjust(null).apply {
+            setGraphModel(graphModel)
+            initAlgo()
+            var i = 0
+            while (i < 25 && canAlgo()) {
+                goAlgo()
+                i++
+            }
+            endAlgo()
+        }
 
         val previewModel = Lookup.getDefault().lookup(PreviewController::class.java).model
         previewModel.properties.putValue(PreviewProperty.SHOW_NODE_LABELS, true)
-        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT, true)
+//        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT, true)
         previewModel.properties.putValue(PreviewProperty.EDGE_CURVED, false)
-        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MIN, 0.0)
-        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MAX, 1.0)
+//        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MIN, 0.0)
+//        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MAX, 2.0)
+        previewModel.properties.putValue(PreviewProperty.SHOW_EDGE_LABELS, true)
+        previewModel.properties.putValue(
+            PreviewProperty.EDGE_LABEL_FONT,
+            previewModel.properties.getFontValue(PreviewProperty.EDGE_LABEL_FONT).deriveFont(10)
+        )
         previewModel.properties.putValue(
             PreviewProperty.NODE_LABEL_FONT,
             previewModel.properties.getFontValue(PreviewProperty.NODE_LABEL_FONT).deriveFont(10)
         )
+
+// Filter Giant Component
+        val filterController = Lookup.getDefault().lookup(FilterController::class.java)
+        val giantComponentFilter = GiantComponentBuilder.GiantComponentFilter()
+        giantComponentFilter.init(graphModel.graph)
+        val giantComponentQuery = filterController.createQuery(giantComponentFilter)
+
+        graphModel.visibleView = filterController.filter(giantComponentQuery)
+
         val ec = Lookup.getDefault().lookup(ExportController::class.java)
         return ec.renderSvg(pc.currentWorkspace)
     }
