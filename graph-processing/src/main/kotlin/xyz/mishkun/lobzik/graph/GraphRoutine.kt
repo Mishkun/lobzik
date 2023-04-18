@@ -81,12 +81,6 @@ class GraphRoutine(
         giantComponentFilter.init(graph)
         val giantComponentQuery = filterController.createQuery(giantComponentFilter)
 
-//        val interfaceColumn = graphModel.nodeTable.getColumn("isinterface")
-//        val interfaceFilter = EqualBooleanFilter.Node(interfaceColumn)
-//        interfaceFilter.isMatch = false
-//        val interfaceQuery = filterController.createQuery(interfaceFilter)
-//        filterController.setSubQuery(giantComponentQuery, interfaceQuery)
-
         val projectColumn = graphModel.nodeTable.getColumn("module")
         val projFunc = appearanceModel.getNodeFunction(projectColumn, PartitionElementColorTransformer::class.java)
         val projPartition = (projFunc as PartitionFunction).partition
@@ -285,28 +279,28 @@ class GraphRoutine(
                 val query = filterController.createQuery(filter)
                 filterController.setSubQuery(query2, query)
                 graphModel.visibleView = filterController.filter(query2)
-//                ForceAtlas2(null).also { layout ->
-//                    layout.setGraphModel(graphModel)
-//                    layout.resetPropertiesValues()
-//                    layout.isNormalizeEdgeWeights = true
-//                    layout.initAlgo()
-//                    var i = 0
-//                    while (i < 25 && layout.canAlgo()) {
-//                        layout.goAlgo()
-//                        i += 1
-//                    }
-//                    layout.endAlgo()
-//                }
-//                LabelAdjust(null).apply {
-//                    setGraphModel(graphModel)
-//                    initAlgo()
-//                    var i = 0
-//                    while (i < 25 && canAlgo()) {
-//                        goAlgo()
-//                        i++
-//                    }
-//                    endAlgo()
-//                }
+                ForceAtlas2(null).also { layout ->
+                    layout.setGraphModel(graphModel)
+                    layout.resetPropertiesValues()
+                    layout.isNormalizeEdgeWeights = true
+                    layout.initAlgo()
+                    var i = 0
+                    while (i < 25 && layout.canAlgo()) {
+                        layout.goAlgo()
+                        i += 1
+                    }
+                    layout.endAlgo()
+                }
+                LabelAdjust(null).apply {
+                    setGraphModel(graphModel)
+                    initAlgo()
+                    var i = 0
+                    while (i < 25 && canAlgo()) {
+                        goAlgo()
+                        i++
+                    }
+                    endAlgo()
+                }
                 // PNG Exporter config and export to Byte array
                 appendLine(createHTML().h3 { +"${moduleLabels[module]}" })
                 appendLine(createHTML().p { +"Conductance score: ${modulesConductance[module]}" })
@@ -546,10 +540,7 @@ class GraphRoutine(
 
         val previewModel = Lookup.getDefault().lookup(PreviewController::class.java).model
         previewModel.properties.putValue(PreviewProperty.SHOW_NODE_LABELS, true)
-//        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT, true)
         previewModel.properties.putValue(PreviewProperty.EDGE_CURVED, false)
-//        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MIN, 0.0)
-//        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MAX, 2.0)
         previewModel.properties.putValue(PreviewProperty.SHOW_EDGE_LABELS, true)
         previewModel.properties.putValue(
             PreviewProperty.EDGE_LABEL_FONT,
