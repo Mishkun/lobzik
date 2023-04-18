@@ -8,10 +8,9 @@ import org.gephi.appearance.plugin.PartitionElementColorTransformer
 import org.gephi.appearance.plugin.palette.PaletteManager
 import org.gephi.filters.api.FilterController
 import org.gephi.filters.api.Query
-import org.gephi.filters.api.Range
 import org.gephi.filters.plugin.AbstractFilter
 import org.gephi.filters.plugin.attribute.AttributeEqualBuilder.EqualBooleanFilter
-import org.gephi.filters.plugin.attribute.AttributeRangeBuilder
+import org.gephi.filters.plugin.attribute.AttributeEqualBuilder.EqualStringFilter
 import org.gephi.filters.plugin.graph.GiantComponentBuilder
 import org.gephi.filters.plugin.partition.PartitionBuilder.NodePartitionFilter
 import org.gephi.filters.spi.NodeFilter
@@ -33,16 +32,17 @@ import org.gephi.preview.api.PreviewProperty
 import org.gephi.project.api.ProjectController
 import org.gephi.project.api.Workspace
 import org.gephi.statistics.plugin.Degree
-import org.gephi.statistics.plugin.Hits
 import org.gephi.statistics.plugin.Modularity
 import org.openide.util.Lookup
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
+import java.awt.Color
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
 import kotlin.math.ceil
 import kotlin.math.log2
+import kotlin.random.Random
 
 
 class GraphRoutine(
@@ -99,21 +99,30 @@ class GraphRoutine(
 
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
-        // Authorithy and Hub
-        val hitsAlgo = Hits()
-        hitsAlgo.undirected = false
-        hitsAlgo.execute(graphModel)
 
+        val degree = Degree()
+        degree.execute(graphModel)
 
-        val column = graphModel.nodeTable.getColumn(Hits.AUTHORITY)
-        val hitsFilter = AttributeRangeBuilder.AttributeRangeFilter.Node(column)
-        val cap = graphModel.nodeIndex.values(column).map { it as Float }.sorted()
+        val column = graphModel.nodeTable.getColumn(Degree.INDEGREE)
+        val hitsFilter = EqualStringFilter.Node(graphModel.nodeTable.getColumn("label"))
+//        val cap = graphModel.nodeIndex.values(column).map { it as Float }.sorted()
+//            .run { elementAt(ceil(size * 0.95).toInt()) }
+//        val hubCap = graphModel.nodeIndex.values(graphModel.nodeTable.getColumn(Hits.HUB)).map { it as Float }.sorted()
+//            .run { elementAt(ceil(size * 0.95).toInt()) }
+        val degrees = graphModel.graph.nodes.map { it.getAttribute(graphModel.nodeTable.getColumn(Degree.DEGREE)) }
+            .map { it as Int }.sorted()
+        val degreeCap = degrees
             .run { elementAt(ceil(size * 0.95).toInt()) }
         hitsFilter.init(graph)
-        hitsFilter.range = Range(0f, Float.MAX_VALUE)
+//        hitsFilter.range = Range(0, Int.MAX_VALUE)
+        println("degreecap is $degreeCap")
+        println("lastindex is ${degrees.last()}")
+        println("size is ${degrees.size}")
 
-        val hitsQuery = filterController.createQuery(hitsFilter)
-        filterController.setSubQuery(partitionProjectQuery, hitsQuery)
+//        val hitsQuery = filterController.createQuery(hitsFilter)
+//        val notHitsQuery = filterController.createQuery(NOTBuilderNode.NOTOperatorNode())
+//        filterController.setSubQuery(partitionProjectQuery, notHitsQuery)
+//        filterController.setSubQuery(notHitsQuery, hitsQuery)
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
 // See visible graph stats
@@ -144,9 +153,6 @@ class GraphRoutine(
         modularity.useWeight = true
         modularity.execute(graphModel)
 
-        val degree = Degree()
-        degree.execute(graphModel)
-
 // Rank color by Modularity Class
         val modColumn = graphModel.nodeTable.getColumn(Modularity.MODULARITY_CLASS)
         val func = appearanceModel.getNodeFunction(modColumn, PartitionElementColorTransformer::class.java)
@@ -157,7 +163,8 @@ class GraphRoutine(
         appearanceController.transform(func)
 
         // extract module nodes from graph model
-        val modules = graphModel.directedGraphVisible.nodes.groupBy { it.getAttribute(Modularity.MODULARITY_CLASS) as Int }
+        val modules =
+            graphModel.directedGraphVisible.nodes.groupBy { it.getAttribute(Modularity.MODULARITY_CLASS) as Int }
         // Execute tf-idf on module labels treating modules as documents
         val tf = modules.mapValues { (_, nodes) ->
             nodes.flatMap { it.label.split("(?<=.)(?=\\p{Upper})".toRegex()) }
@@ -166,7 +173,13 @@ class GraphRoutine(
         val idf = modules.mapValues { (_, nodes) ->
             nodes.flatMap { it.label.split("(?<=.)(?=\\p{Upper})".toRegex()) }
                 .distinct().associateWith { label ->
-                    log2(modules.size.toDouble() / (modules.values.count { nodeList -> nodeList.any { node -> node.label.contains(label) } }))
+                    log2(modules.size.toDouble() / (modules.values.count { nodeList ->
+                        nodeList.any { node ->
+                            node.label.contains(
+                                label
+                            )
+                        }
+                    }))
                 }
         }
         val moduleLabels = modules.mapValues { (thisCommunity, nodes) ->
@@ -191,7 +204,7 @@ class GraphRoutine(
 // Preview
         val previewModel = Lookup.getDefault().lookup(PreviewController::class.java).model
         previewModel.properties.putValue(PreviewProperty.SHOW_NODE_LABELS, true)
-        previewModel.properties.putValue(PreviewProperty.ARROW_SIZE, 0.0)
+        previewModel.properties.putValue(PreviewProperty.ARROW_SIZE, 1.0)
         previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT, true)
         previewModel.properties.putValue(PreviewProperty.EDGE_CURVED, false)
         previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MIN, 1.0)
@@ -225,9 +238,21 @@ class GraphRoutine(
             return
         }
 
-        val authorities = graphModel.nodeTable.graph.nodes.associate { it.label to it.getAttribute(Hits.AUTHORITY) as Float }
-            .filterValues { it > cap }
-        exportHtml(ec, workspace, modulesConductance, moduleLabels, modules, authorities, filterController, projFilter, graphModel)
+        val authorities = graphModel.nodeTable.graph.nodes.associate {
+            it.label to (it.getAttribute(Degree.INDEGREE) as Int to it.getAttribute(Degree.OUTDEGREE) as Int)
+        }
+            .filterValues { it.first > degreeCap || it.second > degreeCap }
+        exportHtml(
+            ec,
+            workspace,
+            modulesConductance,
+            moduleLabels,
+            modules,
+            authorities,
+            filterController,
+            projFilter,
+            graphModel
+        )
     }
 
     private fun filterMonolithOrFeatures(value: String): Boolean =
@@ -239,7 +264,7 @@ class GraphRoutine(
         modulesConductance: Map<Int, Double>,
         moduleLabels: Map<Int, String>,
         modules: Map<Int, List<Node>>,
-        authorities: Map<String, Float>,
+        authorities: Map<String, Pair<Int, Int>>,
         filterController: FilterController,
         projFilter: NodePartitionFilter,
         graphModel: GraphModel,
@@ -353,13 +378,15 @@ class GraphRoutine(
                         tr {
                             th { +"Class" }
                             th { +"Authority" }
+                            th { +"Hub" }
                         }
                     }
                     tbody {
-                        authorities.entries.sortedByDescending { it.value }.forEach { authority ->
+                        authorities.entries.sortedByDescending { it.value.first }.forEach { authority ->
                             tr {
                                 td { +authority.key }
-                                td { +authority.value.toString() }
+                                td { +authority.value.first.toString() }
+                                td { +authority.value.second.toString() }
                             }
                         }
                     }
@@ -367,8 +394,17 @@ class GraphRoutine(
                 div {
                     Plotly.plot {
                         scatter {
-                            val values = authorities.entries.sortedBy { it.value }
-                            y.set(values.map { it.value }.toList())
+                            val values = authorities.entries.sortedBy { it.value.first }
+                            y.set(values.map { it.value.second }.toList())
+                            x.set(values.map { it.key }.toList())
+                            mode = ScatterMode.markers
+                            marker {
+                                size = 16
+                            }
+                        }
+                        scatter {
+                            val values = authorities.entries.sortedBy { it.value.first }
+                            y.set(values.map { it.value.first }.toList())
                             x.set(values.map { it.key }.toList())
                             mode = ScatterMode.markers
                             marker {
@@ -448,13 +484,96 @@ class GraphRoutine(
             }
         }
 
+        val modulesSvg = modulesGraph(modules, moduleLabels, graphModel.directedGraph)
+
         val template = javaClass.getResource("/template.html").readText()
-            .replace("@@whole graph@@", wholeSvg.toString())
+            .replace("@@whole graph@@", modulesSvg.toString())
             .replace("@@monolith_modules@@", monolithModulesRendered)
             .replace("@@monolith_modules_table@@", modulesTable)
             .replace("@@cores@@", nodesAuth)
 
         File(outputDir, "report.html").writeText(template)
+    }
+
+    private fun modulesGraph(
+        modules: Map<Int, List<Node>>,
+        labels: Map<Int, String>,
+        oldGraph: DirectedGraph
+    ): String? {
+        val moduleMap = modules.mapValues { (module, nodes) ->
+            nodes.flatMap { node ->
+                oldGraph.getOutEdges(node)
+                    .mapNotNull { edge ->
+                        (edge.target.getAttribute(Modularity.MODULARITY_CLASS) as? Int)?.takeUnless { it == module || it == 0 }
+                    }
+            }
+        }
+
+        val pc = Lookup.getDefault().lookup(ProjectController::class.java)
+        pc.openNewWorkspace()
+        val graphModel: GraphModel = Lookup.getDefault().lookup(GraphController::class.java).graphModel
+        for ((module, _) in modules) {
+            val newNode = graphModel.factory().newNode(module.toString())
+            newNode.label = labels[module]
+            newNode.setSize(2f)
+            newNode.color = generateRandomColor(Color.getColor("#e1a5fa"))
+            graphModel.graph.addNode(newNode)
+        }
+        moduleMap.forEach { (src, dependencies) ->
+            println("Adding edges from $src to $dependencies")
+            dependencies.fold(HashMap<Int, Int>()) { acc, i -> acc.merge(i,1, Int::plus); acc }
+                .forEach { (trg, weight) ->
+                val newEdge = graphModel.factory().newEdge(
+                    graphModel.graph.getNode(src.toString()),
+                    graphModel.graph.getNode(trg.toString()),
+                    weight,
+                    true,
+                )
+                graphModel.graph.addEdge(newEdge)
+            }
+        }
+
+        println("Nodes: " + graphModel.directedGraph.nodeCount)
+        println("Edges: " + graphModel.directedGraph.edgeCount)
+
+        ForceAtlas2(null).also { layout ->
+            layout.setGraphModel(graphModel)
+            layout.resetPropertiesValues()
+            layout.initAlgo()
+            var i = 0
+            while (i < 100 && layout.canAlgo()) {
+                layout.goAlgo()
+                i += 1
+            }
+            layout.endAlgo()
+        }
+
+        val previewModel = Lookup.getDefault().lookup(PreviewController::class.java).model
+        previewModel.properties.putValue(PreviewProperty.SHOW_NODE_LABELS, true)
+        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT, true)
+        previewModel.properties.putValue(PreviewProperty.EDGE_CURVED, false)
+        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MIN, 0.0)
+        previewModel.properties.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT_MAX, 1.0)
+        previewModel.properties.putValue(
+            PreviewProperty.NODE_LABEL_FONT,
+            previewModel.properties.getFontValue(PreviewProperty.NODE_LABEL_FONT).deriveFont(10)
+        )
+        val ec = Lookup.getDefault().lookup(ExportController::class.java)
+        return ec.renderSvg(pc.currentWorkspace)
+    }
+
+    private fun generateRandomColor(mix: Color?): Color? {
+        var red: Int = Random.nextInt(256)
+        var green: Int = Random.nextInt(256)
+        var blue: Int = Random.nextInt(256)
+
+        // mix the color
+        if (mix != null) {
+            red = (red + mix.red) / 2
+            green = (green + mix.green) / 2
+            blue = (blue + mix.blue) / 2
+        }
+        return Color(red, green, blue)
     }
 
     private fun ExportController.renderSvg(workspace: Workspace?): String? {
