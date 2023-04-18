@@ -64,9 +64,9 @@ internal class ClassAnalyzer(private val logger: Logger) : ClassVisitor(ASM_VERS
         isInterface = access.and(Opcodes.ACC_INTERFACE) != 0
         className = name
         addClass("L$superName;")
-        interfaces?.forEach { i ->
-            addClass("L$i;")
-        }
+//        interfaces?.forEach { i ->
+//            addClass("L$i;")
+//        }
     }
 
     override fun visitField(
