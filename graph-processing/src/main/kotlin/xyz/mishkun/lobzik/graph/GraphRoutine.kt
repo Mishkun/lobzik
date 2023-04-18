@@ -9,8 +9,6 @@ import org.gephi.appearance.plugin.palette.PaletteManager
 import org.gephi.filters.api.FilterController
 import org.gephi.filters.api.Query
 import org.gephi.filters.plugin.AbstractFilter
-import org.gephi.filters.plugin.attribute.AttributeEqualBuilder.EqualBooleanFilter
-import org.gephi.filters.plugin.attribute.AttributeEqualBuilder.EqualStringFilter
 import org.gephi.filters.plugin.graph.GiantComponentBuilder
 import org.gephi.filters.plugin.partition.PartitionBuilder.NodePartitionFilter
 import org.gephi.filters.spi.NodeFilter
@@ -33,6 +31,7 @@ import org.gephi.preview.api.PreviewProperty
 import org.gephi.project.api.ProjectController
 import org.gephi.project.api.Workspace
 import org.gephi.statistics.plugin.Degree
+import org.gephi.statistics.plugin.Hits
 import org.gephi.statistics.plugin.Modularity
 import org.openide.util.Lookup
 import space.kscience.plotly.*
@@ -100,30 +99,11 @@ class GraphRoutine(
 
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
-
         val degree = Degree()
         degree.execute(graphModel)
+        val hits = Hits()
+        hits.execute(graphModel)
 
-        val column = graphModel.nodeTable.getColumn(Degree.INDEGREE)
-        val hitsFilter = EqualStringFilter.Node(graphModel.nodeTable.getColumn("label"))
-//        val cap = graphModel.nodeIndex.values(column).map { it as Float }.sorted()
-//            .run { elementAt(ceil(size * 0.95).toInt()) }
-//        val hubCap = graphModel.nodeIndex.values(graphModel.nodeTable.getColumn(Hits.HUB)).map { it as Float }.sorted()
-//            .run { elementAt(ceil(size * 0.95).toInt()) }
-        val degrees = graphModel.graph.nodes.map { it.getAttribute(graphModel.nodeTable.getColumn(Degree.DEGREE)) }
-            .map { it as Int }.sorted()
-        val degreeCap = degrees
-            .run { elementAt(ceil(size * 0.95).toInt()) }
-        hitsFilter.init(graph)
-//        hitsFilter.range = Range(0, Int.MAX_VALUE)
-        println("degreecap is $degreeCap")
-        println("lastindex is ${degrees.last()}")
-        println("size is ${degrees.size}")
-
-//        val hitsQuery = filterController.createQuery(hitsFilter)
-//        val notHitsQuery = filterController.createQuery(NOTBuilderNode.NOTOperatorNode())
-//        filterController.setSubQuery(partitionProjectQuery, notHitsQuery)
-//        filterController.setSubQuery(notHitsQuery, hitsQuery)
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
 // See visible graph stats
@@ -239,17 +219,12 @@ class GraphRoutine(
             return
         }
 
-        val authorities = graphModel.nodeTable.graph.nodes.associate {
-            it.label to (it.getAttribute(Degree.INDEGREE) as Int to it.getAttribute(Degree.OUTDEGREE) as Int)
-        }
-            .filterValues { it.first > degreeCap || it.second > degreeCap }
         exportHtml(
             ec,
             workspace,
             modulesConductance,
             moduleLabels,
             modules,
-            authorities,
             filterController,
             projFilter,
             graphModel
@@ -265,7 +240,6 @@ class GraphRoutine(
         modulesConductance: Map<Int, Double>,
         moduleLabels: Map<Int, String>,
         modules: Map<Int, List<Node>>,
-        authorities: Map<String, Pair<Int, Int>>,
         filterController: FilterController,
         projFilter: NodePartitionFilter,
         graphModel: GraphModel,
@@ -281,8 +255,8 @@ class GraphRoutine(
         }
 
         val monolithNodes = graphModel.graph.nodes.filter { it.getAttribute("module") == monolithModule }
-        val wholeSvg = ec.renderSvg(workspace)
-        File(outputDir, "whole_graph.svg").writeText(wholeSvg.toString())
+//        val wholeSvg = ec.renderSvg(workspace)
+//        File(outputDir, "whole_graph.svg").writeText(wholeSvg.toString())
 
         val monolithModulesRendered = buildString {
             for ((idx, module) in modulesConductance.keys.sortedByDescending { modulesConductance[it] }
@@ -378,53 +352,40 @@ class GraphRoutine(
                     thead {
                         tr {
                             th { +"Class" }
+                            th { +"InDegree" }
+                            th { +"OutDegree" }
                             th { +"Authority" }
                             th { +"Hub" }
                         }
                     }
                     tbody {
-                        authorities.entries.sortedByDescending { it.value.first }.forEach { authority ->
-                            tr {
-                                td { +authority.key }
-                                td { +authority.value.first.toString() }
-                                td { +authority.value.second.toString() }
+                        val cap = graphModel.nodeIndex.values(graphModel.nodeTable.getColumn(Hits.AUTHORITY))
+                            .map { it as Float }.sorted()
+                            .run { elementAt(ceil(size * 0.95).toInt()) }
+                        val hubCap =
+                            graphModel.nodeIndex.values(graphModel.nodeTable.getColumn(Hits.HUB)).map { it as Float }
+                                .sorted()
+                                .run { elementAt(ceil(size * 0.95).toInt()) }
+                        val degreeCap =
+                            graphModel.graph.nodes.map { it.getAttribute(graphModel.nodeTable.getColumn(Degree.DEGREE)) }
+                                .map { it as Int }.sorted()
+                                .run { elementAt(ceil(size * 0.95).toInt()) }
+
+                        graphModel.nodeTable.graph.nodes.forEach { node ->
+                            val inDegree = node.getAttribute(graphModel.nodeTable.getColumn(Degree.INDEGREE)) as Int
+                            val outDegree = node.getAttribute(graphModel.nodeTable.getColumn(Degree.OUTDEGREE)) as Int
+                            val authority = node.getAttribute(graphModel.nodeTable.getColumn(Hits.AUTHORITY)) as Float
+                            val hub = node.getAttribute(graphModel.nodeTable.getColumn(Hits.HUB)) as Float
+                            if (authority >= cap || hub >= hubCap || inDegree >= degreeCap || outDegree >= degreeCap) {
+                                tr {
+                                    td { +node.label.toString() }
+                                    td { +inDegree.toString() }
+                                    td { +outDegree.toString() }
+                                    td { +authority.toString() }
+                                    td { +hub.toString() }
+                                }
                             }
                         }
-                    }
-                }
-                div {
-                    Plotly.plot {
-                        scatter {
-                            val values = authorities.entries.sortedBy { it.value.first }
-                            y.set(values.map { it.value.second }.toList())
-                            x.set(values.map { it.key }.toList())
-                            mode = ScatterMode.markers
-                            marker {
-                                size = 16
-                            }
-                        }
-                        scatter {
-                            val values = authorities.entries.sortedBy { it.value.first }
-                            y.set(values.map { it.value.first }.toList())
-                            x.set(values.map { it.key }.toList())
-                            mode = ScatterMode.markers
-                            marker {
-                                size = 16
-                            }
-                        }
-                        layout {
-                            title = "Classes sorted by authorities"
-                            xaxis {
-                                title = "Class"
-                                showticklabels = false
-                            }
-                            yaxis {
-                                title = "Authority"
-                            }
-                        }
-                    }.let { plot ->
-                        id = "plot"
-                        unsafe { raw(plot.toHTML()) }
                     }
                 }
             }
