@@ -249,6 +249,14 @@ class GraphRoutine(
                 .sumOf { it.weight }
             intraEdges
         }
+        val modulesMonolithCut = modules.mapValues { (thisCommunity, nodes) ->
+            val edges = nodes.flatMap { node -> graphModel.directedGraph.getOutEdges(node) }
+            val intraEdges = edges
+                .filter { it.target.getAttribute(Modularity.MODULARITY_CLASS) != thisCommunity }
+                .filter { it.target.getAttribute("module") == monolithModule }
+                .sumOf { it.weight }
+            intraEdges
+        }
         for (n in graphModel.graph.nodes) {
             val textProperties = n.textProperties
             val label = n.label ?: ""
@@ -402,7 +410,8 @@ class GraphRoutine(
                     tr {
                         th { +"Module" }
                         th { +"Conductance" }
-                        th { +"ModulesCut" }
+                        th { +"Cut" }
+                        th { +"MonolithCut" }
                         th { +"MonolithClasses" }
                         th { +"NonMonolithClasses" }
                     }
@@ -419,6 +428,7 @@ class GraphRoutine(
                             }
                             td { +conductance.toString() }
                             td { +modulesCut[module].toString() }
+                            td { +modulesMonolithCut[module].toString() }
                             td { +modules[module].orEmpty().count { it in monolithNodes }.toString() }
                             td { +modules[module].orEmpty().count { it !in monolithNodes }.toString() }
                         }
