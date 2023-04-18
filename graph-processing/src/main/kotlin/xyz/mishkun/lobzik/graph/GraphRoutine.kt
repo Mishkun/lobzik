@@ -172,13 +172,6 @@ class GraphRoutine(
                 .joinToString("-") { it.key.lowercase() }
         }
         // Rank by conductance
-        val modulesConductance = modules.mapValues { (thisCommunity, nodes) ->
-            val edges = nodes.flatMap { node -> graph.getOutEdges(node) }
-            val intraEdges = edges
-                .filter { it.target.getAttribute(Modularity.MODULARITY_CLASS) != thisCommunity }
-                .sumOf { it.weight }
-            intraEdges / nodes.count()
-        }
 
 // Preview
 
@@ -222,7 +215,6 @@ class GraphRoutine(
         exportHtml(
             ec,
             workspace,
-            modulesConductance,
             moduleLabels,
             modules,
             filterController,
@@ -237,13 +229,26 @@ class GraphRoutine(
     private fun exportHtml(
         ec: ExportController,
         workspace: Workspace?,
-        modulesConductance: Map<Int, Double>,
         moduleLabels: Map<Int, String>,
         modules: Map<Int, List<Node>>,
         filterController: FilterController,
         projFilter: NodePartitionFilter,
         graphModel: GraphModel,
     ) {
+        val modulesConductance = modules.mapValues { (thisCommunity, nodes) ->
+            val edges = nodes.flatMap { node -> graphModel.directedGraph.getOutEdges(node) }
+            val intraEdges = edges
+                .filter { it.target.getAttribute(Modularity.MODULARITY_CLASS) != thisCommunity }
+                .sumOf { it.weight }
+            intraEdges / edges.sumOf { it.weight }
+        }
+        val modulesCut = modules.mapValues { (thisCommunity, nodes) ->
+            val edges = nodes.flatMap { node -> graphModel.directedGraph.getOutEdges(node) }
+            val intraEdges = edges
+                .filter { it.target.getAttribute(Modularity.MODULARITY_CLASS) != thisCommunity }
+                .sumOf { it.weight }
+            intraEdges
+        }
         for (n in graphModel.graph.nodes) {
             val textProperties = n.textProperties
             val label = n.label ?: ""
@@ -397,6 +402,7 @@ class GraphRoutine(
                     tr {
                         th { +"Module" }
                         th { +"Conductance" }
+                        th { +"ModulesCut" }
                         th { +"MonolithClasses" }
                         th { +"NonMonolithClasses" }
                     }
@@ -412,6 +418,7 @@ class GraphRoutine(
                                 }
                             }
                             td { +conductance.toString() }
+                            td { +modulesCut[module].toString() }
                             td { +modules[module].orEmpty().count { it in monolithNodes }.toString() }
                             td { +modules[module].orEmpty().count { it !in monolithNodes }.toString() }
                         }
