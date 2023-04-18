@@ -552,6 +552,15 @@ class GraphRoutine(
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
         val ec = Lookup.getDefault().lookup(ExportController::class.java)
+
+        val exporterGraphML = ec.getExporter("graphml") // Get GraphML exporter
+        exporterGraphML.workspace = pc.currentWorkspace
+        try {
+            ec.exportFile(File(outputDir, "modulesGraph.graphml"), exporterGraphML)
+        } catch (ex: IOException) {
+            ex.printStackTrace()
+        }
+
         return ec.renderSvg(pc.currentWorkspace)
     }
 
