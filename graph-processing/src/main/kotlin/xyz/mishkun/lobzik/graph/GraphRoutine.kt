@@ -82,11 +82,11 @@ class GraphRoutine(
         giantComponentFilter.init(graph)
         val giantComponentQuery = filterController.createQuery(giantComponentFilter)
 
-        val interfaceColumn = graphModel.nodeTable.getColumn("isinterface")
-        val interfaceFilter = EqualBooleanFilter.Node(interfaceColumn)
-        interfaceFilter.isMatch = false
-        val interfaceQuery = filterController.createQuery(interfaceFilter)
-        filterController.setSubQuery(giantComponentQuery, interfaceQuery)
+//        val interfaceColumn = graphModel.nodeTable.getColumn("isinterface")
+//        val interfaceFilter = EqualBooleanFilter.Node(interfaceColumn)
+//        interfaceFilter.isMatch = false
+//        val interfaceQuery = filterController.createQuery(interfaceFilter)
+//        filterController.setSubQuery(giantComponentQuery, interfaceQuery)
 
         val projectColumn = graphModel.nodeTable.getColumn("module")
         val projFunc = appearanceModel.getNodeFunction(projectColumn, PartitionElementColorTransformer::class.java)
@@ -96,7 +96,7 @@ class GraphRoutine(
         projFilter.parts = selected.toSet()
         projFilter.init(graph)
         val partitionProjectQuery: Query = filterController.createQuery(projFilter)
-        filterController.setSubQuery(interfaceQuery, partitionProjectQuery)
+        filterController.setSubQuery(giantComponentQuery, partitionProjectQuery)
 
         graphModel.visibleView = filterController.filter(giantComponentQuery)
 
@@ -374,7 +374,7 @@ class GraphRoutine(
         val nodesAuth = createHTML().details {
             summary("graph-container") { +"Class outliers rated by Authority" }
             div {
-                table {
+                table("sortable") {
                     thead {
                         tr {
                             th { +"Class" }
