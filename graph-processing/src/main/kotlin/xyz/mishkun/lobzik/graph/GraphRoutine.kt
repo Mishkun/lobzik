@@ -431,7 +431,7 @@ class GraphRoutine(
         }
 
         val modulesTable = createHTML().div {
-            table {
+            table("sortable") {
                 thead {
                     tr {
                         th { +"Module" }
