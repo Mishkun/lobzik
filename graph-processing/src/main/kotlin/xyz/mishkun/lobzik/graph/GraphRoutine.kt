@@ -105,8 +105,8 @@ class GraphRoutine(
         filterController.exportToColumn("isModularized", giantComponentQuery)
 // See visible graph stats
         val graphVisible = graphModel.undirectedGraphVisible
-        println("Nodes: " + graphVisible.nodeCount)
-        println("Edges: " + graphVisible.edgeCount)
+        println("Filtered Nodes: " + graphVisible.nodeCount)
+        println("Filtered Edges: " + graphVisible.edgeCount)
 
 // Run YifanHuLayout for 100 passes - The layout always takes the current visible view
 
@@ -132,7 +132,7 @@ class GraphRoutine(
         val modColumn = graphModel.nodeTable.getColumn(Modularity.MODULARITY_CLASS)
         val func = appearanceModel.getNodeFunction(modColumn, PartitionElementColorTransformer::class.java)
         val partition = (func as PartitionFunction).partition
-        println(partition.size(graph).toString() + " partitions found")
+        println("Found ${partition.size(graph)} partitions")
         val palette = PaletteManager.getInstance().randomPalette(partition.size(graph))
         partition.setColors(graph, palette.colors)
         appearanceController.transform(func)
@@ -258,14 +258,9 @@ class GraphRoutine(
             val label = n.label ?: ""
             textProperties.text = label
             textProperties.setDimensions((label.length * 12).toFloat(), 30f)
-            //System.out.println(textProperties.getWidth());
-            //System.out.println(textProperties.getHeight());
-            //System.out.println(textProperties.getText());
         }
 
         val monolithNodes = graphModel.graph.nodes.filter { it.getAttribute("module") == monolithModule }
-//        val wholeSvg = ec.renderSvg(workspace)
-//        File(outputDir, "whole_graph.svg").writeText(wholeSvg.toString())
 
         val monolithModulesRendered = buildString {
             for ((idx, module) in modulesConductance.keys.sortedByDescending { modulesConductance[it] }
@@ -273,9 +268,8 @@ class GraphRoutine(
                 if (modules[module].orEmpty().none { it in monolithNodes }) {
                     continue
                 }
-                println("started exporting ${moduleLabels[module]} [$idx/${modules.keys.size}]")
+                println("Started exporting ${moduleLabels[module]} [$idx/${modules.keys.size}]")
                 val nodeSet = modules[module].orEmpty().toSet()
-                println("nodeSet contains ${nodeSet.size} classes")
                 val filter = NodeCollectionFilter(nodeSet)
                 val query2 = filterController.createQuery(projFilter)
                 val query = filterController.createQuery(filter)
@@ -498,7 +492,6 @@ class GraphRoutine(
             graphModel.graph.addNode(newNode)
         }
         moduleMap.forEach { (src, dependencies) ->
-            println("Adding edges from $src to $dependencies")
             dependencies.fold(HashMap<Int, Int>()) { acc, i -> acc.merge(i, 1, Int::plus); acc }
                 .forEach { (trg, weight) ->
                     val newEdge = graphModel.factory().newEdge(
@@ -511,9 +504,6 @@ class GraphRoutine(
                     graphModel.graph.addEdge(newEdge)
             }
         }
-
-        println("Nodes: " + graphModel.directedGraph.nodeCount)
-        println("Edges: " + graphModel.directedGraph.edgeCount)
 
         ForceAtlas2(null).also { layout ->
             layout.setGraphModel(graphModel)
@@ -621,7 +611,6 @@ class GraphRoutine(
         override fun init(graph: Graph): Boolean {
             neighbourhood = nodes.flatMapTo(HashSet()) { node -> graph.getEdges(node).flatMap { listOf(it.source, it.target) } }
                 .subtract(nodes)
-            println("Initialized node collection filter with ${nodes.size} nodes and ${neighbourhood.size} in neighb")
             return graph.nodeCount != 0
         }
 
