@@ -17,13 +17,13 @@ class LobzikPlugin: Plugin<Project> {
         extension.ignoredClasses.convention(listOf(".*Dagger.*", ".*Inject.*", ".*ViewBinding$", ".*Factory$", ".*_.*", "^R$", "^R\\$.*"))
         val configuration = target.configurations.create("projectDependencyGraph")
         val nodesConfiguration = target.configurations.create("projectDependencyGraphNodes")
-        val aggregateTask = target.tasks.register<LobzikAggregateDependenciesTask>("aggregateProjectDependencyGraph") {
+        val aggregateTask = target.tasks.register<LobzikAggregateDependenciesTask>("lobzikAggregateDependencyGraphs") {
             inputFiles.from(configuration)
             nodeFiles.from(nodesConfiguration)
             csvEdgesOutputFile.set(target.layout.buildDirectory.file("reports/lobzik/dependencies/edges.csv"))
             csvNodesOutputFile.set(target.layout.buildDirectory.file("reports/lobzik/dependencies/nodes.csv"))
         }
-        val analyzeTask = target.tasks.register<LobzikAnalyzeDependencyGraphTask>("analyzeProjectDependencyGraph") {
+        val analyzeTask = target.tasks.register<LobzikAnalyzeDependencyGraphTask>("lobzikReport") {
             nodesFile.set(aggregateTask.flatMap { it.csvNodesOutputFile })
             edgesFile.set(aggregateTask.flatMap { it.csvEdgesOutputFile })
             monolithModule.set(extension.monolithModule)
