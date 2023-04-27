@@ -24,12 +24,10 @@ class LobzikPlugin: Plugin<Project> {
             csvNodesOutputFile.set(target.layout.buildDirectory.file("reports/lobzik/dependencies/nodes.csv"))
         }
         val analyzeTask = target.tasks.register<LobzikAnalyzeDependencyGraphTask>("analyzeProjectDependencyGraph") {
-//            nodesFile.set(aggregateTask.flatMap { it.csvNodesOutputFile })
-//            edgesFile.set(aggregateTask.flatMap { it.csvEdgesOutputFile })
+            nodesFile.set(aggregateTask.flatMap { it.csvNodesOutputFile })
+            edgesFile.set(aggregateTask.flatMap { it.csvEdgesOutputFile })
             monolithModule.set(extension.monolithModule)
             featureModulesRegex.set(extension.featureModulesRegex)
-            nodesFile.set(target.layout.buildDirectory.file("reports/lobzik/dependencies/edges.csv"))
-            edgesFile.set(target.layout.buildDirectory.file("reports/lobzik/dependencies/nodes.csv"))
             outputDir.set(target.layout.buildDirectory.dir("reports/lobzik/analysis"))
         }
         target.subprojects {  subproject ->
