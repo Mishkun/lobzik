@@ -122,8 +122,8 @@ If you would like to contribute to the development of Lobzik, please submit issu
 
 ## Credits
 
-- Gephi and Gephi Toolkit for powering this project's graph analysis and visualization algorithms
-- 
+- [Gephi](http://gephi.org) and Gephi Toolkit for powering this project's graph analysis and visualization algorithms
+- [dependency-analysis-android-gradle-plugin](https://github.com/autonomousapps/dependency-analysis-android-gradle-plugin) for dependency extraction algorithm
 
 ## License
 
