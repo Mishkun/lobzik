@@ -1,10 +1,10 @@
 plugins {
     kotlin("jvm") version "1.7.21"
-    `java-gradle-plugin`
+    id("com.gradle.plugin-publish") version "1.2.0"
 }
 
 group = "xyz.mishkun.lobzik"
-version = "0.1-SNAPSHOT"
+version = "0.1.0"
 
 repositories {
     mavenCentral()
@@ -12,18 +12,27 @@ repositories {
 }
 
 gradlePlugin {
-    plugins.create("lobzik-project-dependency-analyzer") {
-        id = "xyz.mishkun.lobzik.projectdeps"
+    website.set("https://github.com/Mishkun/lobzik")
+    vcsUrl.set("https://github.com/Mishkun/lobzik")
+    plugins.create("lobzik-project-level") {
+        id = "xyz.mishkun.lobzik-project"
         implementationClass = "xyz.mishkun.lobzik.dependencies.perproject.LobzikProjectDependencyGraphPlugin"
+        displayName = "Lobzik project level plugin"
+        description = "Gradle plugin to extract project classes dependency graph for using in Lobzik analysis pipeline"
+        tags.set(listOf("lobzik", "modularisation", "dependency-analysis"))
     }
-    plugins.create("lobzik-toplevel") {
+    plugins.create("lobzik-top-level") {
         id = "xyz.mishkun.lobzik"
         implementationClass = "xyz.mishkun.lobzik.LobzikPlugin"
+        displayName = "Lozbik plugin"
+        description = "Lobzik is a gradle plugin designed to help Android developers chop their monolithic codebases into smaller pieces. It gathers data about dependency graph and runs Louvain algorithm to split it into modules"
+        tags.set(listOf("lobzik", "modularisation", "dependency-analysis"))
     }
 }
 
 
 val VERSION_ASM = "9.4"
+
 dependencies {
     implementation(gradleApi())
     implementation(gradleKotlinDsl())
