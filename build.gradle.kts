@@ -1,10 +1,13 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     kotlin("jvm") version "1.7.21"
     id("com.gradle.plugin-publish") version "1.2.0"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "xyz.mishkun.lobzik"
-version = "0.1.0"
+version = "0.3.0"
 
 repositories {
     mavenCentral()
@@ -36,7 +39,7 @@ val VERSION_ASM = "9.4"
 dependencies {
     implementation(gradleApi())
     implementation(gradleKotlinDsl())
-    implementation(project(":graph-processing"))
+    implementation(project(":graph-processing", "shadow"))
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.6.10")
     implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.7.0")
     implementation("com.android.tools.build:gradle-api:7.3.1")
@@ -47,4 +50,9 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.named<ShadowJar>("shadowJar") {
+    archiveClassifier.set("")
+    this.isZip64 = true
 }
