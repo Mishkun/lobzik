@@ -30,7 +30,7 @@ abstract class LobzikAnalyzeDependencyGraphTask : DefaultTask() {
 
     @TaskAction
     fun analyzeDependencies() {
-        outputDir.asFileTree
+        outputDir.asFile.get().mkdirs()
         GraphRoutine(
             monolithModule.get(),
             featureModulesRegex.get(),

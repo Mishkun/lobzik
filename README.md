@@ -18,7 +18,7 @@ To use Lobzik, add the following to your root `build.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("xyz.mishkun.lobzik") version "0.3.0"
+    id("xyz.mishkun.lobzik") version "0.3.1"
 }
 ```
 
