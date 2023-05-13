@@ -29,7 +29,7 @@ class LobzikProjectDependencyGraphPlugin : Plugin<Project> {
                     "listProjectDependencyGraph${variant.name.capitalized()}"
                 ) {
                     packagePrefix.set(extension.packagePrefix)
-                    projectName.set(target.name)
+                    projectName.set(target.path)
                     ignoredClasses.set(extension.ignoredClasses)
                     kotlinClasses.from(
                         target.tasks.named("compile${variant.name.capitalized()}Kotlin", KotlinCompile::class.java)
@@ -49,7 +49,7 @@ class LobzikProjectDependencyGraphPlugin : Plugin<Project> {
             val task = target.tasks.register<LobzikProjectDependencyGraphTask>("listProjectDependencyGraph") {
                 packagePrefix.set(extension.packagePrefix)
                 ignoredClasses.set(extension.ignoredClasses)
-                projectName.set(target.name)
+                projectName.set(target.path)
                 kotlinClasses.from(
                     target.tasks.named("compileKotlin", KotlinCompile::class.java)
                 )
