@@ -263,7 +263,7 @@ class GraphRoutine(
         val monolithNodes = graphModel.graph.nodes.filter { it.getAttribute("module") == monolithModule }
 
         val monolithModulesRendered = buildString {
-            for ((idx, module) in modulesConductance.keys.sortedByDescending { modulesConductance[it] }
+            for ((idx, module) in modulesConductance.keys.sortedBy { modulesConductance[it] }
                 .withIndex()) {
                 if (modules[module].orEmpty().none { it in monolithNodes }) {
                     continue
