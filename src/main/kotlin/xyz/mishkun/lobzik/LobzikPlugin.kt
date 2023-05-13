@@ -2,6 +2,7 @@ package xyz.mishkun.lobzik
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.project
@@ -14,7 +15,7 @@ class LobzikPlugin: Plugin<Project> {
     override fun apply(target: Project) {
         val extension = target.extensions.create("lobzik", LobzikExtension::class.java)
         extension.variantName.convention("debug")
-        extension.ignoredClasses.convention(listOf(".*Dagger.*", ".*Inject.*", ".*ViewBinding$", ".*Factory$", ".*_.*", "^R$", "^R\\$.*", "^LiveLiterals$", ".*Binding$"))
+        extension.ignoredClasses.set(listOf(".*Dagger.*", ".*Hilt.*", ".*Inject.*", ".*ViewBinding$", ".*_Factory$", ".*_.*", "^R$", "^R\\$.*", "^LiveLiterals$", ".*Binding$"))
         val configuration = target.configurations.create("projectDependencyGraph")
         val nodesConfiguration = target.configurations.create("projectDependencyGraphNodes")
         val aggregateTask = target.tasks.register<LobzikAggregateDependenciesTask>("lobzikAggregateDependencyGraphs") {
@@ -30,19 +31,17 @@ class LobzikPlugin: Plugin<Project> {
             featureModulesRegex.set(extension.featureModulesRegex)
             outputDir.set(target.layout.buildDirectory.dir("reports/lobzik/analysis"))
         }
-        target.subprojects {  subproject ->
-            target.dependencies {
-                configuration(project(subproject.name, "projectDependencyGraph"))
-                nodesConfiguration(project(subproject.name, "projectDependencyGraphNodes"))
-            }
-            subproject.pluginManager.withPlugin(ANDROID_APP_PLUGIN) {
-                applySubplugin(target, subproject)
-            }
-            subproject.pluginManager.withPlugin(ANDROID_LIBRARY_PLUGIN) {
-                applySubplugin(target, subproject)
-            }
-            subproject.pluginManager.withPlugin(KOTLIN_JVM_PLUGIN) {
-                applySubplugin(target, subproject)
+        target.allprojects {  subproject ->
+            if(subproject != target && subproject.file("build.gradle.kts").exists()) {
+                subproject.pluginManager.withPlugin(ANDROID_APP_PLUGIN) {
+                    applySubplugin(target, subproject, configuration, nodesConfiguration)
+                }
+                subproject.pluginManager.withPlugin(ANDROID_LIBRARY_PLUGIN) {
+                    applySubplugin(target, subproject, configuration, nodesConfiguration)
+                }
+                subproject.pluginManager.withPlugin(KOTLIN_JVM_PLUGIN) {
+                    applySubplugin(target, subproject, configuration, nodesConfiguration)
+                }
             }
         }
     }
@@ -50,8 +49,14 @@ class LobzikPlugin: Plugin<Project> {
     private fun applySubplugin(
         target: Project,
         subproject: Project,
+        configuration: Configuration,
+        nodesConfiguration: Configuration,
     ) {
         subproject.apply<LobzikProjectDependencyGraphPlugin>()
+        target.dependencies {
+            configuration(project(subproject.path, "projectDependencyGraph"))
+            nodesConfiguration(project(subproject.path, "projectDependencyGraphNodes"))
+        }
     }
 }
 
