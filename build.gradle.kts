@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "xyz.mishkun.lobzik"
-version = "0.3.1"
+version = "0.5.0"
 
 repositories {
     mavenCentral()
@@ -36,10 +36,14 @@ gradlePlugin {
 
 val VERSION_ASM = "9.4"
 
+val shadowed by configurations.creating {
+    extendsFrom(configurations.implementation.get())
+}
+
 dependencies {
-    implementation(gradleApi())
+    runtimeOnly(gradleApi())
     implementation(gradleKotlinDsl())
-    implementation(project(":graph-processing", "shadow"))
+    shadowed(project(":graph-processing"))
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.6.10")
     implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.7.0")
     implementation("com.android.tools.build:gradle-api:7.3.1")
@@ -53,6 +57,7 @@ tasks.test {
 }
 
 tasks.named<ShadowJar>("shadowJar") {
+    configurations = listOf(shadowed)
     archiveClassifier.set("")
     this.isZip64 = true
 }

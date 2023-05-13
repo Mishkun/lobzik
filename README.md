@@ -1,4 +1,4 @@
-![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/xyz.mishkun.lobzik?style=flat-square&versionPrefix=0.3&versionSuffix=.0)
+![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/xyz.mishkun.lobzik?style=flat-square&versionPrefix=0.5.0)
 
 # Lobzik: Continuous Modularisation Toolkit
 
@@ -18,7 +18,7 @@ To use Lobzik, add the following to your root `build.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("xyz.mishkun.lobzik") version "0.3.1"
+    id("xyz.mishkun.lobzik") version "0.5.0"
 }
 ```
 
