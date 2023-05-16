@@ -11,10 +11,10 @@ import xyz.mishkun.lobzik.analysis.LobzikAnalyzeDependencyGraphTask
 import xyz.mishkun.lobzik.dependencies.aggregate.LobzikAggregateDependenciesTask
 import xyz.mishkun.lobzik.dependencies.perproject.LobzikProjectDependencyGraphPlugin
 
-class LobzikPlugin: Plugin<Project> {
+class LobzikPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         val extension = target.extensions.create("lobzik", LobzikExtension::class.java)
-        extension.variantName.convention("debug")
+        extension.variantNameRegex.convention("debug")
         extension.ignoredClasses.set(listOf(".*Dagger.*", ".*Hilt.*", ".*Inject.*", ".*ViewBinding$", ".*_Factory$", ".*_.*", "^R$", "^R\\$.*", "^LiveLiterals$", ".*Binding$"))
         val configuration = target.configurations.create("projectDependencyGraph")
         val nodesConfiguration = target.configurations.create("projectDependencyGraphNodes")
@@ -31,8 +31,9 @@ class LobzikPlugin: Plugin<Project> {
             featureModulesRegex.set(extension.featureModulesRegex)
             outputDir.set(target.layout.buildDirectory.dir("reports/lobzik/analysis"))
         }
-        target.allprojects {  subproject ->
-            if(subproject != target && subproject.file("build.gradle.kts").exists()) {
+
+        target.subprojects { subproject ->
+            if (subproject.file("build.gradle.kts").exists()) {
                 subproject.pluginManager.withPlugin(ANDROID_APP_PLUGIN) {
                     applySubplugin(target, subproject, configuration, nodesConfiguration)
                 }
