@@ -16,8 +16,23 @@
 
 package xyz.mishkun.lobzik.graph
 
-import kotlinx.html.*
+import kotlinx.html.a
+import kotlinx.html.details
+import kotlinx.html.div
+import kotlinx.html.h3
+import kotlinx.html.id
+import kotlinx.html.li
+import kotlinx.html.p
 import kotlinx.html.stream.createHTML
+import kotlinx.html.summary
+import kotlinx.html.table
+import kotlinx.html.tbody
+import kotlinx.html.td
+import kotlinx.html.th
+import kotlinx.html.thead
+import kotlinx.html.tr
+import kotlinx.html.ul
+import kotlinx.html.unsafe
 import org.gephi.appearance.api.AppearanceController
 import org.gephi.appearance.api.PartitionFunction
 import org.gephi.appearance.plugin.PartitionElementColorTransformer
@@ -50,8 +65,11 @@ import org.gephi.statistics.plugin.Degree
 import org.gephi.statistics.plugin.Hits
 import org.gephi.statistics.plugin.Modularity
 import org.openide.util.Lookup
-import space.kscience.plotly.*
+import space.kscience.plotly.Plotly
+import space.kscience.plotly.layout
 import space.kscience.plotly.models.ScatterMode
+import space.kscience.plotly.scatter
+import space.kscience.plotly.toHTML
 import java.awt.Color
 import java.io.File
 import java.io.IOException
@@ -380,15 +398,15 @@ class GraphRoutine(
                     tbody {
                         val cap = graphModel.nodeIndex.values(graphModel.nodeTable.getColumn(Hits.AUTHORITY))
                             .map { it as Float }.sorted()
-                            .run { elementAt(ceil(size * 0.95).toInt()) }
+                            .run { elementAt(ceil(lastIndex * 0.95).toInt()) }
                         val hubCap =
                             graphModel.nodeIndex.values(graphModel.nodeTable.getColumn(Hits.HUB)).map { it as Float }
                                 .sorted()
-                                .run { elementAt(ceil(size * 0.95).toInt()) }
+                                .run { elementAt(ceil(lastIndex * 0.95).toInt()) }
                         val degreeCap =
                             graphModel.graph.nodes.map { it.getAttribute(graphModel.nodeTable.getColumn(Degree.DEGREE)) }
                                 .map { it as Int }.sorted()
-                                .run { elementAt(ceil(size * 0.95).toInt()) }
+                                .run { elementAt(ceil(lastIndex * 0.95).toInt()) }
 
                         graphModel.nodeTable.graph.nodes.forEach { node ->
                             val inDegree = node.getAttribute(graphModel.nodeTable.getColumn(Degree.INDEGREE)) as Int
@@ -397,7 +415,7 @@ class GraphRoutine(
                             val hub = node.getAttribute(graphModel.nodeTable.getColumn(Hits.HUB)) as Float
                             if (authority >= cap || hub >= hubCap || inDegree >= degreeCap || outDegree >= degreeCap) {
                                 tr {
-                                    td { +node.label.toString() }
+                                    td { +node.label.orEmpty() }
                                     td { +inDegree.toString() }
                                     td { +outDegree.toString() }
                                     td { +authority.toString() }
