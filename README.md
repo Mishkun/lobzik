@@ -28,10 +28,12 @@ You can configure Lobzik by using `lobzik` extension in your root `build.gradle.
 
 ```kotlin
 lobzik {
+    // regex for your app build variants
+    variantNameRegex.set("debug|paidDebug")
     // path of your monolith module for report
     monolithModule.set(":app") 
     // paths of your feature modules (you can use regex here)
-    featureModulesRegex.add("feature:.*")
+    featureModulesRegex.add(":feature:.*")
     // package prefix for your modules to filter only your own code and exclude code of deps like java.util.*, androidx.*, etc.
     packagePrefix.set("xyz.mishkun")
     // list of regexes of ignored classes. Add your glue code patterns here 
