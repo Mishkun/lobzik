@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "xyz.mishkun.lobzik"
-version = "0.5.0"
+version = "0.6.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -33,22 +33,27 @@ gradlePlugin {
     }
 }
 
+kotlin {
+    this.jvmToolchain(11)
+}
+
 
 val VERSION_ASM = "9.4"
 
-val shadowed by configurations.creating {
-    extendsFrom(configurations.implementation.get())
-}
+val shade by configurations.creating
+configurations.implementation.configure { extendsFrom(shade) }
 
 dependencies {
-    runtimeOnly(gradleApi())
-    implementation(gradleKotlinDsl())
-    shadowed(project(":graph-processing"))
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.6.10")
-    implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.7.0")
-    implementation("com.android.tools.build:gradle-api:7.3.1")
-    implementation("org.ow2.asm:asm:$VERSION_ASM")
-    implementation("org.ow2.asm:asm-tree:$VERSION_ASM")
+    compileOnly(gradleApi())
+    compileOnly(gradleKotlinDsl())
+    shade(files("libs/gephi-toolkit-0.10.0-all.jar"))
+    shadow("org.jetbrains.kotlinx:kotlinx-html-jvm:0.8.0")
+    shadow("space.kscience:plotlykt-core:0.5.0")
+    shadow("org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.6.10")
+    shadow("com.github.doyaaaaaken:kotlin-csv-jvm:1.7.0")
+    shadow("com.android.tools.build:gradle-api:7.3.1")
+    shadow("org.ow2.asm:asm:$VERSION_ASM")
+    shadow("org.ow2.asm:asm-tree:$VERSION_ASM")
     testImplementation(kotlin("test"))
 }
 
@@ -56,8 +61,8 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.named<ShadowJar>("shadowJar") {
-    configurations = listOf(shadowed)
+tasks.withType<ShadowJar> {
+    configurations = listOf(shade)
     archiveClassifier.set("")
     this.isZip64 = true
 }
