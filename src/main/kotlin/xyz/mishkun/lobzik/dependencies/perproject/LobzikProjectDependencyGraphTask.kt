@@ -10,6 +10,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.objectweb.asm.ClassReader
@@ -30,6 +31,7 @@ abstract class LobzikProjectDependencyGraphTask : DefaultTask() {
 
     @get:Classpath
     @get:InputFiles
+    @get:Optional
     abstract val kotlinClasses: ConfigurableFileCollection
 
     @get:Classpath

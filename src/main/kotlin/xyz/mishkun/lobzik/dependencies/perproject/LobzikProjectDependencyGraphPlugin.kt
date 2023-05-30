@@ -8,6 +8,7 @@ import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
+import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 import xyz.mishkun.lobzik.LobzikExtension
 
@@ -31,9 +32,11 @@ class LobzikProjectDependencyGraphPlugin : Plugin<Project> {
                     packagePrefix.set(extension.packagePrefix)
                     projectName.set(target.path)
                     ignoredClasses.set(extension.ignoredClasses)
-                    kotlinClasses.from(
-                        target.tasks.named("compile${variant.name.capitalized()}Kotlin", KotlinCompile::class.java)
-                    )
+                    if (target.pluginManager.hasPlugin("org.jetbrains.kotlin.android")) {
+                        kotlinClasses.from(
+                            target.tasks.named("compile${variant.name.capitalized()}Kotlin", KotlinCompile::class.java)
+                        )
+                    }
                     javaClasses.from(
                         target.tasks.named<JavaCompile>("compile${variant.name.capitalized()}JavaWithJavac")
                     )
@@ -50,11 +53,13 @@ class LobzikProjectDependencyGraphPlugin : Plugin<Project> {
                 packagePrefix.set(extension.packagePrefix)
                 ignoredClasses.set(extension.ignoredClasses)
                 projectName.set(target.path)
-                kotlinClasses.from(
-                    target.tasks.named("compileKotlin", KotlinCompile::class.java)
-                )
+                if (target.pluginManager.hasPlugin("org.jetbrains.kotlin.jvm")) {
+                    kotlinClasses.from(
+                        target.tasks.withType(KotlinCompile::class.java)
+                    )
+                }
                 javaClasses.from(
-                    target.tasks.named<JavaCompile>("compileJava")
+                    target.tasks.withType<JavaCompile>()
                 )
                 classesDependenciesOutput.set(project.layout.buildDirectory.file("reports/lobzik/edges.csv"))
                 classesNodeInfoOutput.set(project.layout.buildDirectory.file("reports/lobzik/nodes.csv"))
