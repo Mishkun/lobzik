@@ -31,8 +31,8 @@ class LobzikPlugin: Plugin<Project> {
             featureModulesRegex.set(extension.featureModulesRegex)
             outputDir.set(target.layout.buildDirectory.dir("reports/lobzik/analysis"))
         }
-        target.allprojects {  subproject ->
-            if(subproject != target && subproject.file("build.gradle.kts").exists()) {
+        target.allprojects { subproject ->
+            if (subproject != target && subproject.hasBuildGradleFile()) {
                 subproject.pluginManager.withPlugin(ANDROID_APP_PLUGIN) {
                     applySubplugin(target, subproject, configuration, nodesConfiguration)
                 }
@@ -45,6 +45,9 @@ class LobzikPlugin: Plugin<Project> {
             }
         }
     }
+
+    private fun Project.hasBuildGradleFile(): Boolean =
+        file("build.gradle.kts").exists() || file("build.gradle").exists()
 
     private fun applySubplugin(
         target: Project,
