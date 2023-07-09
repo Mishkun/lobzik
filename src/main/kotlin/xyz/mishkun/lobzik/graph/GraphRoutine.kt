@@ -247,6 +247,7 @@ class GraphRoutine(
             modules,
             filterController,
             projFilter,
+            modularity.modularity,
             graphModel
         )
     }
@@ -261,6 +262,7 @@ class GraphRoutine(
         modules: Map<Int, List<Node>>,
         filterController: FilterController,
         projFilter: NodePartitionFilter,
+        modularity: Double,
         graphModel: GraphModel,
     ) {
         val modulesConductance = modules.mapValues { (thisCommunity, nodes) ->
@@ -491,6 +493,7 @@ class GraphRoutine(
 
         val template = javaClass.getResource("/template.html").readText()
             .replace("@@whole graph@@", modulesSvg.toString())
+            .replace("@@modularity_score@@", modularity.toString())
             .replace("@@monolith_modules@@", monolithModulesRendered)
             .replace("@@monolith_modules_table@@", modulesTable)
             .replace("@@cores@@", nodesAuth)
