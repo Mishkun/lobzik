@@ -53,10 +53,15 @@ abstract class LobzikProjectDependencyGraphTask : DefaultTask() {
 
         val parsedDeps = parseClassDependencies(files)
             .flattenClasses()
+        if (parsedDeps.isEmpty()) logger.warn("No classes matching prefix $packagePrefix found in $projectName. Did you forget to configure packagePrefix property?")
 
         val edges = parsedDeps.flatMap { info ->
             info.dependencies.map { ClassDependency(info.name, it.key, it.value) }
         }.filter { it.name != it.dependsOn }
+        if (edges.isEmpty()) {
+            return
+        }
+        logger.info("Found ${edges.size} nodes and ${parsedDeps.size} edges")
         csvWriter().open(classesDependenciesOutput.get().asFile) {
             writeRow("Source", "Target", "Weight")
             for (dep in edges) {

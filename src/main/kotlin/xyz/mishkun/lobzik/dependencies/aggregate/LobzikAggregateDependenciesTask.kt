@@ -8,6 +8,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
+import kotlin.math.log
 
 abstract class LobzikAggregateDependenciesTask: DefaultTask() {
 
@@ -28,6 +29,9 @@ abstract class LobzikAggregateDependenciesTask: DefaultTask() {
         val aggregatedNodes = nodeFiles.files.flatMap { artifact ->
             csvReader().readAllWithHeader(artifact)
         }
+        if (aggregatedNodes.isEmpty()) throw IllegalStateException("No nodes found in project. Did you configure lobzik properly?")
+        logger.lifecycle("Module names are: " + aggregatedNodes.map { it["Module"] }.toSet().joinToString())
+        logger.lifecycle("Total nodes extracted ${aggregatedNodes.size}")
         csvWriter().open(csvNodesOutputFile.asFile.get()) {
             writeRow("Id", "Label", "IsInterface", "Module")
             for (edge in aggregatedNodes) {
@@ -37,6 +41,8 @@ abstract class LobzikAggregateDependenciesTask: DefaultTask() {
         val aggregatedEdges = inputFiles.files.flatMap { artifact ->
             csvReader().readAllWithHeader(artifact)
         }
+        if (aggregatedEdges.isEmpty()) throw IllegalStateException("No edges found in project. Did you configure lobzik properly?")
+        logger.lifecycle("Total edges extracted ${aggregatedEdges.size}")
         csvWriter().open(csvEdgesOutputFile.asFile.get()) {
             writeRow("Source", "Target", "Weight")
             for (edge in aggregatedEdges) {

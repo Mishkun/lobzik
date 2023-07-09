@@ -65,6 +65,7 @@ import org.gephi.statistics.plugin.Degree
 import org.gephi.statistics.plugin.Hits
 import org.gephi.statistics.plugin.Modularity
 import org.openide.util.Lookup
+import org.slf4j.Logger
 import space.kscience.plotly.Plotly
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.ScatterMode
@@ -103,8 +104,6 @@ class GraphRoutine(
 
 // See if graph is well imported
         val graph: DirectedGraph = graphModel.directedGraph
-        println("Nodes: " + graph.nodeCount)
-        println("Edges: " + graph.edgeCount)
 
         val appearanceController = Lookup.getDefault().lookup(AppearanceController::class.java)
         val appearanceModel = appearanceController.model
@@ -116,6 +115,11 @@ class GraphRoutine(
         val giantComponentQuery = filterController.createQuery(giantComponentFilter)
 
         val projectColumn = graphModel.nodeTable.getColumn("module")
+        println("Filtering graph according to spec:")
+        println("\tMonolith module: $monolithModule")
+        println("\tFeature modules: $featureModules")
+        if (projectColumn == null) throw IllegalStateException("No 'module' column found in the graph. Check your lobzik configuration to include proper monolith and feature module names.")
+        println("Input modules: " + graphModel.nodeIndex.values(projectColumn).toSet().joinToString())
         val projFunc = appearanceModel.getNodeFunction(projectColumn, PartitionElementColorTransformer::class.java)
         val projPartition = (projFunc as PartitionFunction).partition
         val projFilter = NodePartitionFilter(appearanceModel, projPartition)
@@ -133,6 +137,7 @@ class GraphRoutine(
         hits.execute(graphModel)
 
         graphModel.visibleView = filterController.filter(giantComponentQuery)
+        println("Filtered module columns:" + graphModel.nodeIndex.values(projectColumn).toSet().joinToString())
 
 // See visible graph stats
 
@@ -142,9 +147,6 @@ class GraphRoutine(
         println("Filtered Nodes: " + graphVisible.nodeCount)
         println("Filtered Edges: " + graphVisible.edgeCount)
 
-// Run YifanHuLayout for 100 passes - The layout always takes the current visible view
-
-// Run YifanHuLayout for 100 passes - The layout always takes the current visible view
         ForceAtlas2(null).also { layout ->
             layout.setGraphModel(graphModel)
             layout.resetPropertiesValues()
@@ -166,7 +168,8 @@ class GraphRoutine(
         val modColumn = graphModel.nodeTable.getColumn(Modularity.MODULARITY_CLASS)
         val func = appearanceModel.getNodeFunction(modColumn, PartitionElementColorTransformer::class.java)
         val partition = (func as PartitionFunction).partition
-        println("Found ${partition.size(graph)} partitions")
+
+        println("Found ${partition.size(graph)} modules")
         val palette = PaletteManager.getInstance().randomPalette(partition.size(graph))
         partition.setColors(graph, palette.colors)
         appearanceController.transform(func)
