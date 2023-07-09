@@ -8,6 +8,8 @@ for extraction. With conductance score as its guiding metric, Lobzik ensures tha
 effort. Lobzik outputs a detailed report of your potential improvements in neat HTML one-pager, allowing you to quickly
 decide which modules to extract and in which order.
 
+See the Lobzik in action in this [case study](https://dev.to/mishkun/carving-the-path-to-modularity-a-lobzik-tool-case-study-on-the-protonmail-android-app-mid).
+
 ## Getting started
 
 To use Lobzik in your project, follow these steps:
