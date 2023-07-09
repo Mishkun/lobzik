@@ -118,7 +118,7 @@ class GraphRoutine(
         hits.execute(graphModel)
 
         graphModel.visibleView = filterController.filter(giantComponentQuery)
-        println("Filtered module columns:" + graphModel.nodeIndex.values(projectColumn).toSet().joinToString())
+        println("Filtered module columns: " + graphModel.graphVisible.nodes.mapTo(HashSet()) { it.getAttribute(projectColumn) }.joinToString())
 
 // See visible graph stats
 
