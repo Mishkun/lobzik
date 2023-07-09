@@ -16,26 +16,12 @@
 
 package xyz.mishkun.lobzik.graph
 
-import kotlinx.html.a
-import kotlinx.html.details
-import kotlinx.html.div
-import kotlinx.html.h3
-import kotlinx.html.id
-import kotlinx.html.li
-import kotlinx.html.p
+import kotlinx.html.*
 import kotlinx.html.stream.createHTML
-import kotlinx.html.summary
-import kotlinx.html.table
-import kotlinx.html.tbody
-import kotlinx.html.td
-import kotlinx.html.th
-import kotlinx.html.thead
-import kotlinx.html.tr
-import kotlinx.html.ul
-import kotlinx.html.unsafe
 import org.gephi.appearance.api.AppearanceController
 import org.gephi.appearance.api.PartitionFunction
 import org.gephi.appearance.plugin.PartitionElementColorTransformer
+import org.gephi.appearance.plugin.RankingNodeSizeTransformer
 import org.gephi.appearance.plugin.palette.PaletteManager
 import org.gephi.filters.api.FilterController
 import org.gephi.filters.api.Query
@@ -43,11 +29,7 @@ import org.gephi.filters.plugin.AbstractFilter
 import org.gephi.filters.plugin.graph.GiantComponentBuilder
 import org.gephi.filters.plugin.partition.PartitionBuilder.NodePartitionFilter
 import org.gephi.filters.spi.NodeFilter
-import org.gephi.graph.api.DirectedGraph
-import org.gephi.graph.api.Graph
-import org.gephi.graph.api.GraphController
-import org.gephi.graph.api.GraphModel
-import org.gephi.graph.api.Node
+import org.gephi.graph.api.*
 import org.gephi.io.exporter.api.ExportController
 import org.gephi.io.exporter.preview.SVGExporter
 import org.gephi.io.exporter.spi.GraphExporter
@@ -65,7 +47,6 @@ import org.gephi.statistics.plugin.Degree
 import org.gephi.statistics.plugin.Hits
 import org.gephi.statistics.plugin.Modularity
 import org.openide.util.Lookup
-import org.slf4j.Logger
 import space.kscience.plotly.Plotly
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.ScatterMode
@@ -347,15 +328,26 @@ class GraphRoutine(
                         summary("graph-container") {
                             +"Classes of this module"
                         }
-                        modules[module]?.groupBy { it.getAttribute("module") }
-                            ?.forEach { (module, nodes) ->
-                                p { +"currently found in $module module:" }
-                                ul {
-                                    nodes.forEach {
-                                        li { +(it.label ?: it.id.toString()) }
+                        div {
+                            table("sortable") {
+                                thead {
+                                    tr {
+                                        th { +"Module" }
+                                        th { +"Class" }
+                                        th { +"Degree" }
+                                    }
+                                }
+                                tbody {
+                                    modules[module].orEmpty().forEach {
+                                        tr {
+                                            td { +it.getAttribute("module").toString() }
+                                            td { +(it.label ?: it.id.toString()) }
+                                            td { +it.getAttribute(Degree.DEGREE).toString() }
+                                        }
                                     }
                                 }
                             }
+                        }
                     }
                 )
                 appendLine(
