@@ -307,7 +307,7 @@ class GraphRoutine(
                 if (modules[module].orEmpty().none { it in monolithNodes }) {
                     continue
                 }
-                println("Started exporting ${moduleLabels[module]} [$idx/${modules.keys.size}]")
+                println("Started exporting ${moduleLabels[module]} [${idx + 1}/${modules.keys.size}]")
                 val nodeSet = modules[module].orEmpty().toSet()
                 val filter = NodeCollectionFilter(nodeSet)
                 val query2 = filterController.createQuery(projFilter)
